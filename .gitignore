@@ -1,0 +1,22 @@
+# Node
+node_modules/
+dist/
+*.local
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+
+# Data / DB
+*.db
+*.sqlite3
+.env
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
