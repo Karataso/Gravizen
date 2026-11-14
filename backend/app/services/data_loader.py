@@ -262,9 +262,18 @@ def get_mock_series(crew_id: str, end_day: int, days: int) -> SeriesResponse:
 
 def seed_database(db) -> None:
     """
-    Siembra la BD con datos del simulador (ml/).
+    Siembra la BD con la tripulación mock (ml/ reemplazará las mediciones).
     Se llama al arrancar la app (startup event).
     """
-    # TODO: Importar y usar ml.simulator.generate_crew() cuando exista
-    # Por ahora: no-op, usamos mock data
-    pass
+    from app.models import Astronaut
+
+    for member in MOCK_CREW:
+        if db.get(Astronaut, member["id"]) is None:
+            db.add(Astronaut(
+                id=member["id"],
+                name=member["name"],
+                role=member["role"],
+                mission_day=118,
+                profile="mars_transit",
+            ))
+    db.commit()
