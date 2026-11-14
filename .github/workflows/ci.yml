@@ -24,6 +24,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
+        if: hashFiles('ml/requirements.txt') != ''
         with:
           python-version: "3.11"
           cache: pip
