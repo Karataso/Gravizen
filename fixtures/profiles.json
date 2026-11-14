@@ -1,0 +1,29 @@
+{
+  "profiles": [
+    {
+      "id": "station",
+      "name": "Estación (LEO)",
+      "description": "Órbita baja terrestre (ISS). Radiación base, sin retraso de comunicación.",
+      "radiation_base_msv": 0.5,
+      "comms_delay_minutes": 0,
+      "co2_base_mmhg": 2.0
+    },
+    {
+      "id": "moon",
+      "name": "Luna",
+      "description": "Órbita/superficie lunar. Radiación moderada, ~3 min retraso.",
+      "radiation_base_msv": 1.2,
+      "comms_delay_minutes": 3,
+      "co2_base_mmhg": 2.2
+    },
+    {
+      "id": "mars_transit",
+      "name": "Tránsito a Marte",
+      "description": "Viaje interestelar. Radiación alta, ~20 min retraso por sentido.",
+      "radiation_base_msv": 1.8,
+      "comms_delay_minutes": 20,
+      "co2_base_mmhg": 2.5
+    }
+  ],
+  "current": "mars_transit"
+}

@@ -1,0 +1,70 @@
+{
+  "crew_id": "c1",
+  "day": 118,
+  "profile": "mars_transit",
+  "indicators": [
+    {
+      "id": "sleep_h",
+      "value": 5.1,
+      "baseline": 7.0,
+      "level": "act",
+      "z": -2.4,
+      "why": [
+        "Sueño: 5,1 h contra 7,0 h de tu base, 4 noches seguidas"
+      ],
+      "action": "Revisa luz y horario; sin cafeína después de las 14:00.",
+      "escalate": "flight_surgeon",
+      "days_to_threshold": null
+    },
+    {
+      "id": "mood",
+      "value": 2.0,
+      "baseline": 4.0,
+      "level": "act",
+      "z": -2.0,
+      "why": [
+        "Ánimo: 2/5 contra 4 de tu base, 3 días seguidos"
+      ],
+      "action": "Contacto social estructurado (comida en grupo, llamada a familia).",
+      "escalate": "flight_surgeon",
+      "days_to_threshold": null
+    },
+    {
+      "id": "stress",
+      "value": 4.0,
+      "baseline": 2.0,
+      "level": "watch",
+      "z": 2.0,
+      "why": [
+        "Estrés: 4/5 contra 2 de tu base"
+      ],
+      "action": "Pausas obligatorias, técnicas de respiración.",
+      "escalate": "crew",
+      "days_to_threshold": null
+    },
+    {
+      "id": "hr_rest",
+      "value": 64.0,
+      "baseline": 62.0,
+      "level": "normal",
+      "z": 0.5,
+      "why": [
+        "Pulso en reposo: 64 lpm contra 62 lpm"
+      ],
+      "action": "Mantén hidratación y rutina.",
+      "escalate": "crew",
+      "days_to_threshold": null
+    }
+  ],
+  "hazards": [
+    {
+      "id": "iso",
+      "level": "act",
+      "anomaly": 0.91,
+      "why": [
+        "Sueño, ánimo y estrés empeorando juntos desde el día 108"
+      ],
+      "days_to_threshold": 6
+    }
+  ]
+}

@@ -1,0 +1,57 @@
+{
+  "crew_id": "c4",
+  "day": 118,
+  "profile": "mars_transit",
+  "indicators": [
+    {
+      "id": "co2_mmhg",
+      "value": 3.2,
+      "baseline": 2.5,
+      "level": "act",
+      "z": 2.3,
+      "why": [
+        "CO₂: 3,2 mmHg (promedio 1 h) - sobre límite 3,0 mmHg"
+      ],
+      "action": "Ventilar cabina; revisar depurador; bajar actividad intensa.",
+      "escalate": "flight_surgeon",
+      "days_to_threshold": null
+    },
+    {
+      "id": "sleep_h",
+      "value": 5.5,
+      "baseline": 6.8,
+      "level": "watch",
+      "z": -1.8,
+      "why": [
+        "Sueño: 5,5 h contra 6,8 h de tu base"
+      ],
+      "action": "Revisa ambiente de dormir.",
+      "escalate": "crew",
+      "days_to_threshold": null
+    },
+    {
+      "id": "headache",
+      "value": 1.0,
+      "baseline": 0.0,
+      "level": "act",
+      "z": 3.0,
+      "why": [
+        "Cefalea persistente 3 días - sospecha CO₂"
+      ],
+      "action": "Verificar CO₂; hidratación; avisar médico si sigue.",
+      "escalate": "flight_surgeon",
+      "days_to_threshold": null
+    }
+  ],
+  "hazards": [
+    {
+      "id": "env",
+      "level": "act",
+      "anomaly": 0.85,
+      "why": [
+        "CO₂ sobre 3 mmHg, cefalea, sueño peor"
+      ],
+      "days_to_threshold": 3
+    }
+  ]
+}
