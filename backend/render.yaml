@@ -1,0 +1,38 @@
+# Render.com Blueprint - Vitalis Backend
+# Conecta este repo a Render y creará el servicio automáticamente
+# Ver: https://render.com/docs/blueprint-spec
+
+services:
+  - type: web
+    name: vitalis-api
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: .
+    plan: free
+    region: oregon  # o frankfurt, singapore, etc.
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: DEBUG
+        value: "false"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: vitalis-db
+          property: connectionString
+      - key: CORS_ORIGINS
+        value: '["https://vitalis-frontend.vercel.app"]'  # Cambia por tu URL real
+      - key: DEFAULT_PROFILE
+        value: mars_transit
+      - key: DEMO_MODE
+        value: "true"
+      - key: DEMO_SPEEDUP
+        value: "60"
+      - key: NASA_API_KEY
+        sync: false  # Configurar manualmente en dashboard
+
+databases:
+  - name: vitalis-db
+    plan: free
+    databaseName: vitalis
+    user: vitalis_user
+    region: oregon
