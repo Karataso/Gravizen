@@ -1,0 +1,74 @@
+{
+  "crew_id": "c3",
+  "day": 118,
+  "profile": "mars_transit",
+  "indicators": [
+    {
+      "id": "sleep_h",
+      "value": 7.1,
+      "baseline": 7.2,
+      "level": "normal",
+      "z": 0.1,
+      "why": [],
+      "action": "",
+      "escalate": "",
+      "days_to_threshold": null
+    },
+    {
+      "id": "hr_rest",
+      "value": 66.0,
+      "baseline": 65.0,
+      "level": "normal",
+      "z": 0.2,
+      "why": [],
+      "action": "",
+      "escalate": "",
+      "days_to_threshold": null
+    },
+    {
+      "id": "mood",
+      "value": 4.0,
+      "baseline": 4.0,
+      "level": "normal",
+      "z": 0.0,
+      "why": [],
+      "action": "",
+      "escalate": "",
+      "days_to_threshold": null
+    },
+    {
+      "id": "stress",
+      "value": 1.0,
+      "baseline": 1.0,
+      "level": "normal",
+      "z": 0.0,
+      "why": [],
+      "action": "",
+      "escalate": "",
+      "days_to_threshold": null
+    },
+    {
+      "id": "exercise_min",
+      "value": 95.0,
+      "baseline": 95.0,
+      "level": "normal",
+      "z": 0.0,
+      "why": [],
+      "action": "",
+      "escalate": "",
+      "days_to_threshold": null
+    },
+    {
+      "id": "co2_mmhg",
+      "value": 2.2,
+      "baseline": 2.5,
+      "level": "normal",
+      "z": -0.5,
+      "why": [],
+      "action": "",
+      "escalate": "",
+      "days_to_threshold": null
+    }
+  ],
+  "hazards": []
+}
