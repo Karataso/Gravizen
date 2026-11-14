@@ -1,6 +1,4 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
 :root {
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -190,6 +188,123 @@ button {
   backdrop-filter: blur(16px);
 }
 
+.module-nav {
+  position: sticky;
+  z-index: 19;
+  top: 76px;
+  min-height: 56px;
+  padding: 7px clamp(18px, 5vw, 72px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in srgb, var(--bg-elevated) 94%, transparent);
+  backdrop-filter: blur(16px);
+}
+
+.module-tabs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.module-tab {
+  min-height: 44px;
+  padding: 9px 14px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  color: var(--muted-strong);
+  background: transparent;
+  font-size: 11px;
+  font-weight: 750;
+  transition: color 160ms ease, border-color 160ms ease, background 160ms ease;
+}
+
+.module-tab:hover {
+  color: var(--text);
+  background: var(--surface-soft);
+}
+
+.module-tab.active {
+  color: var(--text);
+  border-color: color-mix(in srgb, var(--brand) 55%, var(--border));
+  background: var(--surface-strong);
+}
+
+.sync-controls {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 9px;
+}
+
+.sync-state,
+.pending-count {
+  min-height: 28px;
+  padding: 5px 9px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.sync-state svg {
+  width: 14px;
+  height: 14px;
+}
+
+.sync-state.online {
+  color: var(--status-online);
+  background: var(--severity-normal-bg);
+}
+
+.sync-state.offline,
+.pending-count {
+  color: var(--severity-watch-color);
+  background: var(--severity-watch-bg);
+}
+
+.sync-button {
+  min-height: 44px;
+  padding: 9px 13px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid var(--border-strong);
+  border-radius: 9px;
+  color: var(--text-soft);
+  background: var(--surface-soft);
+  font-size: 10px;
+  font-weight: 750;
+}
+
+.sync-button:hover:not(:disabled) {
+  color: var(--brand);
+  border-color: var(--brand);
+}
+
+.sync-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.sync-button svg {
+  width: 14px;
+  height: 14px;
+}
+
+.spinning {
+  animation: vitalis-spin 850ms linear infinite;
+}
+
+.module-view {
+  min-height: 480px;
+}
+
 .brand,
 .top-actions,
 .connection,
@@ -284,7 +399,7 @@ button {
   margin: auto;
   display: grid;
   grid-template-columns: 286px minmax(0, 1fr);
-  min-height: calc(100vh - 76px);
+  min-height: calc(100vh - 132px);
 }
 
 .crew-sidebar {
@@ -1159,6 +1274,12 @@ h3 {
     padding: 0 18px;
   }
 
+  .module-nav {
+    top: 64px;
+    padding-left: 18px;
+    padding-right: 18px;
+  }
+
   .layout {
     display: block;
   }
@@ -1207,6 +1328,28 @@ h3 {
 }
 
 @media (max-width: 520px) {
+  .module-nav {
+    position: static;
+    padding: 8px 13px;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .module-tabs {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .module-tab {
+    padding: 8px 5px;
+    font-size: 9px;
+    text-align: center;
+  }
+
+  .sync-controls {
+    justify-content: space-between;
+  }
+
   .connection {
     max-width: 116px;
     font-size: 10px;

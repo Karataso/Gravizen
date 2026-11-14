@@ -136,10 +136,7 @@ function useChartSize() {
   const chartRef = useCallback((node: HTMLDivElement | null) => setElement(node), []);
 
   useEffect(() => {
-    if (!element) {
-      setSize({ width: 0, height: 0 });
-      return;
-    }
+    if (!element) return;
 
     const updateSize = () => {
       const bounds = element.getBoundingClientRect();

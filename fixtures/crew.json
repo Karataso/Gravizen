@@ -1,0 +1,34 @@
+{
+  "crew": [
+    {
+      "id": "c1",
+      "name": "Nova",
+      "role": "comandante",
+      "level": "act",
+      "mission_day": 118
+    },
+    {
+      "id": "c2",
+      "name": "Iker",
+      "role": "piloto",
+      "level": "act",
+      "mission_day": 118
+    },
+    {
+      "id": "c3",
+      "name": "Aya",
+      "role": "cientifico",
+      "level": "normal",
+      "mission_day": 118
+    },
+    {
+      "id": "c4",
+      "name": "Sol",
+      "role": "ingeniero",
+      "level": "act",
+      "mission_day": 118
+    }
+  ],
+  "mission_day": 118,
+  "profile": "mars_transit"
+}

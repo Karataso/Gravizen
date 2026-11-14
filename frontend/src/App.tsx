@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { RefreshCw, Wifi, WifiOff } from 'lucide-react';
 import { ApiError, DEMO_MODE, fetchCrew, getSeriesPoints, loadDashboard } from './api';
 import {
   AlertPanel,
@@ -10,8 +11,12 @@ import {
   TrendChart,
 } from './components';
 import { getIndicatorMeta, severityRank } from './domain';
+import { CheckInForm } from './components/CheckInForm';
+import { EarthLinkPanel } from './components/EarthLinkPanel';
+import { useSyncQueue } from './hooks/useSyncQueue';
 import type { CrewMember, DashboardData, Severity } from './types';
-import './styles.css';
+
+type AppView = 'dashboard' | 'checkin' | 'earth';
 
 function isAbortError(error: unknown): boolean {
   return error instanceof DOMException && error.name === 'AbortError';
@@ -59,6 +64,14 @@ export default function App() {
       return true;
     }
   });
+  const [view, setView] = useState<AppView>('dashboard');
+  const {
+    isOnline,
+    pendingCount,
+    isSyncing,
+    triggerSync,
+    refreshPendingCount,
+  } = useSyncQueue();
 
   useEffect(() => {
     document.documentElement.dataset.theme = dark ? 'dark' : 'light';
@@ -118,15 +131,9 @@ export default function App() {
     return [...ids];
   }, [data]);
 
-  useEffect(() => {
-    if (availableIndicatorIds.length === 0) {
-      if (selectedIndicatorId !== '') setSelectedIndicatorId('');
-      return;
-    }
-    if (!availableIndicatorIds.includes(selectedIndicatorId)) {
-      setSelectedIndicatorId(availableIndicatorIds[0]);
-    }
-  }, [availableIndicatorIds, selectedIndicatorId]);
+  const effectiveIndicatorId = availableIndicatorIds.includes(selectedIndicatorId)
+    ? selectedIndicatorId
+    : availableIndicatorIds[0] ?? '';
 
   const selectedMember = crew.find((member) => member.id === crewId);
   const highestSeverity = data?.hazards.reduce<Severity>(
@@ -134,13 +141,13 @@ export default function App() {
     'normal',
   ) ?? 'normal';
 
-  const selectedIndicator = data?.indicators.find((indicator) => indicator.id === selectedIndicatorId);
-  const selectedIndicatorMeta = selectedIndicatorId
-    ? getIndicatorMeta(selectedIndicatorId)
+  const selectedIndicator = data?.indicators.find((indicator) => indicator.id === effectiveIndicatorId);
+  const selectedIndicatorMeta = effectiveIndicatorId
+    ? getIndicatorMeta(effectiveIndicatorId)
     : { label: 'Sin indicador', unit: '', howMeasured: 'No hay indicadores disponibles para este día.' };
   const trendPoints = useMemo(
-    () => data ? getSeriesPoints(data.series, selectedIndicatorId) : [],
-    [data, selectedIndicatorId],
+    () => data ? getSeriesPoints(data.series, effectiveIndicatorId) : [],
+    [data, effectiveIndicatorId],
   );
   const trendValues = trendPoints.flatMap((point) => point.value === null ? [] : [point.value]);
   const trendAverage = trendValues.length > 0
@@ -148,6 +155,19 @@ export default function App() {
     : null;
 
   const retry = () => setReloadToken((token) => token + 1);
+  const effectiveCrewId = crewId || crew[0]?.id || 'c1';
+  const currentMissionDay = data?.missionDay ?? day;
+
+  const handleCheckInSaved = () => {
+    void refreshPendingCount();
+    void triggerSync();
+    retry();
+  };
+
+  const handleReportCreated = () => {
+    void refreshPendingCount();
+    void triggerSync();
+  };
 
   return (
     <div className="app-shell">
@@ -184,6 +204,56 @@ export default function App() {
         </div>
       </header>
 
+      <nav className="module-nav" aria-label="Módulos de Vitalis">
+        <div className="module-tabs">
+          <button
+            type="button"
+            className={view === 'dashboard' ? 'module-tab active' : 'module-tab'}
+            onClick={() => setView('dashboard')}
+            aria-pressed={view === 'dashboard'}
+          >
+            Dashboard
+          </button>
+          <button
+            type="button"
+            className={view === 'checkin' ? 'module-tab active' : 'module-tab'}
+            onClick={() => setView('checkin')}
+            aria-pressed={view === 'checkin'}
+          >
+            Check-in diario
+          </button>
+          <button
+            type="button"
+            className={view === 'earth' ? 'module-tab active' : 'module-tab'}
+            onClick={() => setView('earth')}
+            aria-pressed={view === 'earth'}
+          >
+            Enlace con Tierra
+          </button>
+        </div>
+
+        <div className="sync-controls">
+          <span className={`sync-state ${isOnline ? 'online' : 'offline'}`} role="status">
+            {isOnline ? <Wifi aria-hidden="true" /> : <WifiOff aria-hidden="true" />}
+            {isOnline ? 'Conectado' : 'Sin conexión'}
+          </span>
+          {pendingCount > 0 && (
+            <span className="pending-count" aria-live="polite">
+              {pendingCount} pendiente{pendingCount === 1 ? '' : 's'}
+            </span>
+          )}
+          <button
+            type="button"
+            className="sync-button"
+            onClick={() => void triggerSync()}
+            disabled={!isOnline || isSyncing}
+          >
+            <RefreshCw className={isSyncing ? 'spinning' : ''} aria-hidden="true" />
+            {isSyncing ? 'Sincronizando…' : 'Sincronizar'}
+          </button>
+        </div>
+      </nav>
+
       <div className="layout">
         <aside className="crew-sidebar">
           <div className="aside-heading">
@@ -210,7 +280,26 @@ export default function App() {
         </aside>
 
         <main id="main-content" className="content" tabIndex={-1}>
-          {crewError ? (
+          {view === 'checkin' ? (
+            <div className="module-view">
+              <CheckInForm
+                crewId={effectiveCrewId}
+                currentDay={currentMissionDay}
+                isOnline={isOnline}
+                onSaved={handleCheckInSaved}
+              />
+            </div>
+          ) : view === 'earth' ? (
+            <div className="module-view">
+              <EarthLinkPanel
+                crewId={effectiveCrewId}
+                currentDay={currentMissionDay}
+                onReportCreated={handleReportCreated}
+              />
+            </div>
+          ) : (
+            <>
+              {crewError ? (
             <section className="state-panel error-state" role="alert">
               <span className="state-icon" aria-hidden="true">!</span>
               <div>
@@ -295,7 +384,7 @@ export default function App() {
                     <label htmlFor="indicator-select">Indicador</label>
                     <select
                       id="indicator-select"
-                      value={selectedIndicatorId}
+                      value={effectiveIndicatorId}
                       onChange={(event) => setSelectedIndicatorId(event.target.value)}
                     >
                       {availableIndicatorIds.length > 0 ? (
@@ -323,6 +412,8 @@ export default function App() {
                 <p><b>Vitalis apoya la decisión; no diagnostica.</b> Los datos de la fisiología son simulados y los umbrales de prototipo deben validarse con el médico de vuelo.</p>
                 {DEMO_MODE && <span>Demostración local · sin datos clínicos reales</span>}
               </footer>
+            </>
+          )}
             </>
           )}
         </main>

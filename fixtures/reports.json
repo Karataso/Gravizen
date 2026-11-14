@@ -1,0 +1,32 @@
+{
+  "reports": [
+    {
+      "id": "r_1",
+      "crew_id": "c1",
+      "day": 118,
+      "level": "act",
+      "hazard": "iso",
+      "message": "Sueño y ánimo bajos, 4 días. ¿Ajustamos carga?",
+      "status": "transit",
+      "eta_minutes": 20,
+      "created_at": "2026-11-14T18:02:00Z",
+      "received_at": null,
+      "responded_at": null,
+      "response_message": null
+    },
+    {
+      "id": "r_2",
+      "crew_id": "c4",
+      "day": 117,
+      "level": "watch",
+      "hazard": "env",
+      "message": "CO2 algo alto, cefalea leve.",
+      "status": "received",
+      "eta_minutes": 20,
+      "created_at": "2026-11-14T17:10:00Z",
+      "received_at": "2026-11-14T17:30:00Z",
+      "responded_at": null,
+      "response_message": null
+    }
+  ]
+}

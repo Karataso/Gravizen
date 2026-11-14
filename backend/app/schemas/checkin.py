@@ -1,11 +1,15 @@
 """Esquemas de check-in (POST /api/crew/{id}/checkins)."""
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from typing import Optional
 from app.schemas.measurement import StatusResponse
 
 
 class CheckInCreate(BaseModel):
     """Payload para crear/actualizar check-in."""
+
+    # Falla ruidosamente si el frontend manda nombres que la API no conoce.
+    model_config = ConfigDict(extra="forbid")
+
     day: int = Field(ge=0)
     sleep_h: Optional[float] = Field(default=None, ge=3, le=12)
     mood: Optional[int] = Field(default=None, ge=1, le=5)

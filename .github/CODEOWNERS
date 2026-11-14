@@ -1,0 +1,12 @@
+# Dueños por carpeta. Cualquier PR que toque una carpeta necesita la revisión de su dueño.
+# Ver PROJECT.md §10.3. Actualizar cuando se confirmen los 6 roles.
+
+*                    @Karataso
+/.github/            @Karataso
+/fixtures/           @Karataso
+/docs/               @Karataso
+/render.yaml         @Karataso
+
+/frontend/           @Karataso   # TODO: rol 2 y rol 3
+/backend/            @Shadow1987-oss
+/ml/                 @Karataso   # TODO: rol 5
