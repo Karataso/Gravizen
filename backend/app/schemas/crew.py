@@ -1,5 +1,5 @@
 """Esquemas de tripulación (GET /api/crew, /api/crew/{id})."""
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional, Literal
 from enum import Enum
 
@@ -43,4 +43,17 @@ class AstronautDetail(AstronautPublic):
 class CrewListResponse(BaseModel):
     crew: list[AstronautPublic]
     mission_day: int
+    profile: str
+
+
+class CrewProfileUpdate(BaseModel):
+    """Cambiar el perfil de misión de un tripulante (demo del retraso)."""
+    model_config = ConfigDict(extra="forbid")
+
+    profile: Literal["station", "moon", "mars_transit"]
+
+
+class CrewProfileResponse(BaseModel):
+    id: str
+    name: str
     profile: str

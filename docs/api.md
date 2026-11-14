@@ -13,6 +13,7 @@ Errores: `{"detail": "mensaje"}` (formato FastAPI).
 |---|---|---|
 | GET | `/api/health` | Liveness |
 | GET | `/api/crew` | Tripulación (sin datos clínicos) |
+| PATCH | `/api/crew/{id}` | Cambia el perfil de misión (`station` · `moon` · `mars_transit`) |
 | GET | `/api/crew/{id}/series?end_day=118&days=30` | Serie + línea base |
 | GET | `/api/crew/{id}/status?day=118` | Niveles, explicación, acción, proyección |
 | POST | `/api/crew/{id}/checkins` | Crea/actualiza check-in del día (201 al crear, 200 al actualizar) |
@@ -55,6 +56,18 @@ Errores: `{"detail": "mensaje"}` (formato FastAPI).
 }
 ```
 
+`status` refleja el último check-in guardado del día (sueño, ánimo, estrés y
+síntomas). Los indicadores que vienen del mock y no se midieron se quedan como están.
+
+### `PATCH /api/crew/c1`
+
+```json
+{"profile": "station"}
+```
+→ `{"id": "c1", "name": "Nova", "profile": "station"}`
+
+Solo afecta reportes **nuevos**: el `eta_minutes` se fija al crear cada reporte.
+
 ### `GET /api/crew/c1/series?end_day=118&days=30`
 
 ```json
@@ -88,6 +101,7 @@ Respuesta `201` (nuevo) / `200` (actualizado):
 ```
 
 Idempotente por `(crew_id, day)`: reenviar actualiza, no duplica.
+Los nombres de campo son exactos: uno desconocido devuelve **422** (no se ignora).
 
 ### `POST /api/crew/c1/reports`
 
@@ -103,6 +117,7 @@ Idempotente por `(crew_id, day)`: reenviar actualiza, no duplica.
 ```
 
 `status`: `transit` → `received` (a los `eta_minutes`) → `responded` (manual o +5 min).
+`created_at` es ISO 8601 en UTC, con `Z`.
 Retraso: Estación 0 · Luna 3 · Marte 20 min. En demo, ×60.
 
 ### `GET /api/reports?crew_id=c1`

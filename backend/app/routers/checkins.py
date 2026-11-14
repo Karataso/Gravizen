@@ -8,7 +8,7 @@ from app.database import get_db
 from app.models import Astronaut, CheckIn
 from app.schemas.checkin import CheckInCreate, CheckInResponse
 from app.schemas.measurement import StatusResponse
-from app.routers.crew import get_mock_status
+from app.services.ml_bridge import evaluate_crew_day
 from app.config import get_settings
 
 
@@ -33,8 +33,6 @@ async def create_checkin(
     - Si existe: actualiza (200)
     Devuelve el status actualizado tras procesar el check-in.
     """
-    from fastapi import Response
-
     # Verificar tripulante
     astronaut = db.execute(
         select(Astronaut).where(Astronaut.id == crew_id)
@@ -83,9 +81,8 @@ async def create_checkin(
     db.commit()
     db.refresh(checkin)
 
-    # TODO: Trigger motor ML para recalcular status
-    # Por ahora: devolver status mock
-    updated_status = get_mock_status(crew_id, payload.day)
+    # Status recalculado con el check-in recién guardado
+    updated_status = evaluate_crew_day(crew_id, payload.day, db)
 
     return CheckInResponse(
         status=updated_status,

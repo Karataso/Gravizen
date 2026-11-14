@@ -6,7 +6,13 @@ from typing import Optional
 
 from app.database import get_db
 from app.models import Astronaut, Measurement
-from app.schemas.crew import CrewListResponse, AstronautPublic
+from app.schemas.crew import (
+    AstronautPublic,
+    CrewListResponse,
+    CrewProfileResponse,
+    CrewProfileUpdate,
+    CrewRole,
+)
 from app.schemas.measurement import (
     StatusResponse,
     SeriesResponse,
@@ -15,7 +21,8 @@ from app.schemas.measurement import (
     HazardStatus,
     Level,
 )
-from app.services.data_loader import get_mock_crew, get_mock_status, get_mock_series
+from app.services.data_loader import get_mock_crew, get_mock_series
+from app.services.ml_bridge import evaluate_crew_day
 from app.config import get_settings
 
 
@@ -38,7 +45,7 @@ async def list_crew(
     # Calcular nivel general por tripulante (peor nivel entre indicadores)
     crew_list = []
     for member in mock_crew:
-        status = get_mock_status(member["id"], day)
+        status = evaluate_crew_day(member["id"], day, db)
         worst_level = Level.NORMAL
         for ind in status.indicators:
             if ind.level == Level.EMERGENCY:
@@ -64,6 +71,36 @@ async def list_crew(
     )
 
 
+@router.patch(
+    "/crew/{crew_id}",
+    response_model=CrewProfileResponse,
+    summary="Cambiar el perfil de misión (retraso de comunicación)",
+)
+async def update_crew_profile(
+    crew_id: str,
+    payload: CrewProfileUpdate,
+    db: Session = Depends(get_db),
+):
+    """
+    Cambia el perfil de misión del tripulante. Solo afecta reportes nuevos:
+    el retraso se fija al crear cada reporte.
+    """
+    astronaut = db.execute(
+        select(Astronaut).where(Astronaut.id == crew_id)
+    ).scalar_one_or_none()
+
+    if not astronaut:
+        raise HTTPException(status_code=404, detail=f"Tripulante {crew_id} no encontrado")
+
+    astronaut.profile = payload.profile
+    db.commit()
+    db.refresh(astronaut)
+
+    return CrewProfileResponse(
+        id=astronaut.id, name=astronaut.name, profile=astronaut.profile
+    )
+
+
 @router.get(
     "/crew/{crew_id}/status",
     response_model=StatusResponse,
@@ -86,9 +123,8 @@ async def get_crew_status(
     if not astronaut:
         raise HTTPException(status_code=404, detail=f"Tripulante {crew_id} no encontrado")
 
-    # TODO: Conectar motor ML real (ml.evaluate)
-    # Por ahora: datos mock
-    return get_mock_status(crew_id, day)
+    # Mock + check-in del día hasta que exista ml.evaluate()
+    return evaluate_crew_day(crew_id, day, db)
 
 
 @router.get(
