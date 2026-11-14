@@ -33,6 +33,43 @@ export const responseProtocol: Record<Severity, { action: string; urgency: strin
   },
 };
 
+export const hazardResponseActions: Record<string, Record<Severity, string>> = {
+  rad: {
+    normal: 'Mantén el registro del dosímetro y sigue la pauta de protección de la misión.',
+    watch: 'Confirma la lectura con un segundo sensor, registra la dosis y revisa sueño, estrés y síntomas.',
+    act: 'Ve al refugio o a la zona más blindada, suspende actividades fuera de la nave y registra la dosis.',
+    emergency: 'Ponte en refugio de inmediato, suspende toda salida y avisa al control de la misión.',
+  },
+  iso: {
+    normal: 'Mantén el contacto social, la rutina de sueño y el check-in diario.',
+    watch: 'Ajusta la carga de trabajo, la luz y el ejercicio; programa contacto social y vuelve a medir en 24–48 h.',
+    act: 'Programa contacto social, reduce la carga y solicita apoyo del psicología de vuelo y del médico.',
+    emergency: 'Pide apoyo médico y psicológico inmediato, reduce la carga y no te quedes a solas.',
+  },
+  dist: {
+    normal: 'Mantén el protocolo de enlace con tierra y la bitácora de reportes.',
+    watch: 'Prioriza la acción local, registra el estado y envía el reporte en paralelo.',
+    act: 'Reduce la carga, ejecuta la acción local disponible y solicita consulta médica.',
+    emergency: 'Activa la atención médica a bordo y envía un reporte urgente sin esperar la próxima ventana.',
+  },
+  grav: {
+    normal: 'Mantén el plan semanal de ejercicio y registra tipo, minutos y cumplimiento.',
+    watch: 'Replanifica las sesiones, revisa el equipo y el dolor, y recupera la carga con ritmo progresivo.',
+    act: 'Replanifica el entrenamiento, revisa dolor o lesión y solicita una evaluación médica.',
+    emergency: 'Suspende el esfuerzo, atiende dolor o lesión y pide atención médica inmediata.',
+  },
+  env: {
+    normal: 'Mantén el registro ambiental y la ventilación de la cabina.',
+    watch: 'Verifica el sensor, mejora la ventilación y repite la lectura de CO₂ en 30 min.',
+    act: 'Ventila la cabina, revisa el depurador, reduce la actividad intensa y avisa al control.',
+    emergency: 'Muévete a un módulo con mejor aire, verifica el sensor y solicita atención médica inmediata.',
+  },
+};
+
+export function getHazardAction(id: HazardId, level: Severity): string {
+  return hazardResponseActions[id]?.[level] ?? responseProtocol[level].action;
+}
+
 export interface HazardMeta {
   label: string;
   shortLabel: string;

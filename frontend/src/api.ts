@@ -1,10 +1,9 @@
 import { demoCrew, demoDashboard } from './demo';
-import { responseProtocol, severityRank } from './domain';
+import { getHazardAction, responseProtocol } from './domain';
 import type {
   BaselineStats,
   CrewMember,
   DashboardData,
-  HazardId,
   HazardStatus,
   IndicatorStatus,
   SeriesDataset,
@@ -14,14 +13,6 @@ import type {
 
 const API_URL = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '');
 export const DEMO_MODE = import.meta.env.VITE_DEMO_MODE === 'true';
-
-const HAZARD_INDICATORS: Record<string, string[]> = {
-  rad: ['rad_dose_msv', 'sleep_h', 'stress'],
-  iso: ['mood', 'stress', 'sleep_h'],
-  grav: ['exercise_min', 'hr_rest'],
-  env: ['co2_mmhg', 'headache', 'sleep_h'],
-  dist: [],
-};
 
 type JsonRecord = Record<string, unknown>;
 
@@ -50,9 +41,27 @@ function readNumber(value: unknown): number | null {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-function readStringArray(value: unknown): string[] {
-  if (!Array.isArray(value)) return [];
-  return value.filter((item): item is string => typeof item === 'string' && item.trim().length > 0);
+function readNullableNumber(value: unknown, context: string): number | null {
+  if (value === null || value === undefined) return null;
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value === 'string' && value.trim()) {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  throw new ApiError(`${context} devolvió un valor numérico no válido.`);
+}
+
+function requireStringArray(value: unknown, context: string): string[] {
+  if (!Array.isArray(value)) {
+    throw new ApiError(`${context} devolvió una lista de explicaciones con un formato no válido.`);
+  }
+
+  return value.map((item, index) => {
+    if (typeof item !== 'string') {
+      throw new ApiError(`${context} devolvió una explicación no textual en la posición ${index}.`);
+    }
+    return item.trim();
+  }).filter((item) => item.length > 0);
 }
 
 function normalizeRole(value: unknown): string {
@@ -111,10 +120,14 @@ async function getJson(path: string, signal?: AbortSignal): Promise<unknown> {
   return response.json() as Promise<unknown>;
 }
 
-function normalizeCrewMember(payload: unknown): CrewMember | null {
-  if (!isRecord(payload)) return null;
+function normalizeCrewMember(payload: unknown, index: number): CrewMember {
+  if (!isRecord(payload)) {
+    throw new ApiError(`La API devolvió un tripulante inválido en la posición ${index}.`);
+  }
   const id = readString(payload.id);
-  if (!id) return null;
+  if (!id) {
+    throw new ApiError(`La API devolvió un tripulante sin identificador en la posición ${index}.`);
+  }
 
   const name = readString(payload.name) ?? 'Tripulante';
   return {
@@ -127,7 +140,7 @@ function normalizeCrewMember(payload: unknown): CrewMember | null {
 }
 
 export async function fetchCrew(day: number, signal?: AbortSignal): Promise<CrewMember[]> {
-  if (DEMO_MODE) return demoCrew;
+  if (DEMO_MODE) return demoCrew(day);
 
   const query = new URLSearchParams({ day: String(day) });
   const payload = await getJson(`/api/crew?${query.toString()}`, signal);
@@ -141,36 +154,28 @@ export async function fetchCrew(day: number, signal?: AbortSignal): Promise<Crew
     throw new ApiError('La respuesta de /api/crew no contiene una lista de tripulantes.');
   }
 
-  const members = rawMembers.map(normalizeCrewMember).filter((member): member is CrewMember => member !== null);
+  const members = rawMembers.map(normalizeCrewMember);
   if (members.length === 0) {
     throw new ApiError('La API no devolvió tripulantes para mostrar.');
+  }
+
+  const memberIds = new Set<string>();
+  for (const member of members) {
+    if (memberIds.has(member.id)) {
+      throw new ApiError(`La API devolvió el identificador de tripulante duplicado "${member.id}".`);
+    }
+    memberIds.add(member.id);
   }
   return members;
 }
 
-function deriveHazardAction(
-  id: HazardId,
-  level: Severity,
-  indicators: IndicatorStatus[],
-  explicitAction: string | null,
-): string {
-  if (explicitAction) return explicitAction;
-
-  const relatedIds = HAZARD_INDICATORS[id] ?? [];
-  const relatedIndicator = indicators
-    .filter((indicator) => relatedIds.includes(indicator.id) && indicator.action)
-    .sort((left, right) => severityRank[right.level] - severityRank[left.level])[0];
-
-  return relatedIndicator?.action ?? responseProtocol[level].action;
-}
-
-function normalizeIndicator(payload: unknown): IndicatorStatus {
+function normalizeIndicator(payload: unknown, index: number): IndicatorStatus {
   if (!isRecord(payload)) {
-    throw new ApiError('La API devolvió un indicador con un formato no válido.');
+    throw new ApiError(`La API devolvió un indicador con un formato no válido en la posición ${index}.`);
   }
   const id = readString(payload.id);
   if (!id) {
-    throw new ApiError('La API devolvió un indicador sin identificador.');
+    throw new ApiError(`La API devolvió un indicador sin identificador en la posición ${index}.`);
   }
 
   const level = requireSeverity(payload.level ?? payload.severity, `El indicador "${id}"`);
@@ -180,20 +185,20 @@ function normalizeIndicator(payload: unknown): IndicatorStatus {
     baseline: readNumber(payload.baseline),
     level,
     z: readNumber(payload.z),
-    why: readStringArray(payload.why),
+    why: requireStringArray(payload.why, `El indicador "${id}"`),
     action: readString(payload.action) ?? responseProtocol[level].action,
     escalate: readString(payload.escalate),
     daysToThreshold: readNumber(payload.days_to_threshold),
   };
 }
 
-function normalizeHazard(payload: unknown, indicators: IndicatorStatus[]): HazardStatus {
+function normalizeHazard(payload: unknown, index: number): HazardStatus {
   if (!isRecord(payload)) {
-    throw new ApiError('La API devolvió un peligro con un formato no válido.');
+    throw new ApiError(`La API devolvió un peligro con un formato no válido en la posición ${index}.`);
   }
   const id = readString(payload.id);
   if (!id) {
-    throw new ApiError('La API devolvió un peligro sin identificador.');
+    throw new ApiError(`La API devolvió un peligro sin identificador en la posición ${index}.`);
   }
 
   const level = requireSeverity(payload.level ?? payload.severity, `El peligro "${id}"`);
@@ -201,9 +206,9 @@ function normalizeHazard(payload: unknown, indicators: IndicatorStatus[]): Hazar
     id,
     level,
     anomaly: readNumber(payload.anomaly),
-    why: readStringArray(payload.why),
+    why: requireStringArray(payload.why, `El peligro "${id}"`),
     daysToThreshold: readNumber(payload.days_to_threshold),
-    action: deriveHazardAction(id, level, indicators, readString(payload.action)),
+    action: readString(payload.action) ?? getHazardAction(id, level),
     urgency: readString(payload.urgency) ?? responseProtocol[level].urgency,
   };
 }
@@ -225,15 +230,30 @@ export async function fetchStatus(crewId: string, day: number, signal?: AbortSig
     throw new ApiError('La respuesta del estado de misión no es válida.');
   }
 
-  const indicators = Array.isArray(payload.indicators)
-    ? payload.indicators.map(normalizeIndicator)
-    : [];
-  const hazards = Array.isArray(payload.hazards)
-    ? payload.hazards.map((hazard) => normalizeHazard(hazard, indicators))
-    : [];
+  if (!Array.isArray(payload.indicators)) {
+    throw new ApiError('La respuesta del estado de misión no contiene una lista de indicadores.');
+  }
+  if (!Array.isArray(payload.hazards)) {
+    throw new ApiError('La respuesta del estado de misión no contiene una lista de peligros.');
+  }
 
-  if (indicators.length === 0 && hazards.length === 0) {
-    throw new ApiError(`La API no devolvió alertas ni indicadores para el día ${day}.`);
+  const indicators = payload.indicators.map(normalizeIndicator);
+  const hazards = payload.hazards.map(normalizeHazard);
+
+  const indicatorIds = new Set<string>();
+  for (const indicator of indicators) {
+    if (indicatorIds.has(indicator.id)) {
+      throw new ApiError(`La API devolvió el indicador duplicado "${indicator.id}".`);
+    }
+    indicatorIds.add(indicator.id);
+  }
+
+  const hazardIds = new Set<string>();
+  for (const hazard of hazards) {
+    if (hazardIds.has(hazard.id)) {
+      throw new ApiError(`La API devolvió el peligro duplicado "${hazard.id}".`);
+    }
+    hazardIds.add(hazard.id);
   }
 
   return {
@@ -244,37 +264,67 @@ export async function fetchStatus(crewId: string, day: number, signal?: AbortSig
   };
 }
 
-function normalizeSeries(payload: unknown): SeriesDataset {
+function normalizeSeries(payload: unknown, endDay: number): SeriesDataset {
   if (!isRecord(payload)) {
     throw new ApiError('La respuesta de la serie de indicadores no es válida.');
   }
+  if (!Array.isArray(payload.days)) {
+    throw new ApiError('La respuesta de la serie no contiene una lista de días.');
+  }
+  if (!isRecord(payload.series)) {
+    throw new ApiError('La respuesta de la serie no contiene una colección de indicadores.');
+  }
+  if (!isRecord(payload.baseline)) {
+    throw new ApiError('La respuesta de la serie no contiene una colección de líneas base.');
+  }
 
-  const rawSeries = isRecord(payload.series) ? payload.series : {};
-  const rawBaseline = isRecord(payload.baseline) ? payload.baseline : {};
+  const days = payload.days.map((rawDay, index) => {
+    const day = readNullableNumber(rawDay, `El día de serie en la posición ${index}`);
+    if (day === null || !Number.isInteger(day) || day < 0) {
+      throw new ApiError(`La API devolvió un día de serie no válido en la posición ${index}.`);
+    }
+    return day;
+  });
+
+  for (let index = 1; index < days.length; index += 1) {
+    if (days[index] <= days[index - 1]) {
+      throw new ApiError('La API devolvió los días de la serie duplicados o fuera de orden.');
+    }
+  }
+  if (days.length > 0 && days[days.length - 1] !== endDay) {
+    throw new ApiError(`La serie solicitada para el día ${endDay} no termina en ese día.`);
+  }
+
   const values: Record<string, Array<number | null>> = {};
   const baseline: Record<string, BaselineStats> = {};
 
-  for (const [id, rawValues] of Object.entries(rawSeries)) {
-    values[id] = Array.isArray(rawValues) ? rawValues.map(readNumber) : [];
+  for (const [id, rawValues] of Object.entries(payload.series)) {
+    if (!Array.isArray(rawValues)) {
+      throw new ApiError(`La API devolvió una serie no válida para el indicador "${id}".`);
+    }
+    if (rawValues.length > days.length) {
+      throw new ApiError(`La serie del indicador "${id}" tiene más lecturas que días.`);
+    }
+    const readings = rawValues.map((value, index) => (
+      readNullableNumber(value, `La lectura del indicador "${id}" en la posición ${index}`)
+    ));
+    // Alineamos de forma explícita las lecturas finalizadas antes del último día.
+    values[id] = readings.concat(
+      Array.from({ length: days.length - readings.length }, () => null),
+    );
   }
 
-  for (const [id, rawStats] of Object.entries(rawBaseline)) {
-    if (!isRecord(rawStats)) continue;
-    const median = readNumber(rawStats.median);
-    const mad = readNumber(rawStats.mad);
-    if (median !== null) baseline[id] = { median, mad: mad ?? 0 };
+  for (const [id, rawStats] of Object.entries(payload.baseline)) {
+    if (!isRecord(rawStats)) {
+      throw new ApiError(`La API devolvió una línea base no válida para el indicador "${id}".`);
+    }
+    const median = readNullableNumber(rawStats.median, `La mediana del indicador "${id}"`);
+    if (median === null) {
+      throw new ApiError(`La API devolvió una línea base sin mediana para el indicador "${id}".`);
+    }
+    const mad = readNullableNumber(rawStats.mad, `El MAD del indicador "${id}"`);
+    baseline[id] = { median, mad };
   }
-
-  const inferredDays = Math.max(0, ...Object.values(values).map((series) => series.length));
-  const days = Array.isArray(payload.days)
-    ? payload.days.map((rawDay, index) => {
-      const day = readNumber(rawDay);
-      if (day === null) {
-        throw new ApiError(`La API devolvió un día de serie no válido en la posición ${index}.`);
-      }
-      return day;
-    })
-    : Array.from({ length: inferredDays }, (_, index) => index);
 
   return { days, values, baseline };
 }
@@ -284,7 +334,7 @@ export async function fetchSeries(crewId: string, day: number, signal?: AbortSig
 
   const query = new URLSearchParams({ end_day: String(day), days: '30' });
   const payload = await getJson(`/api/crew/${encodeURIComponent(crewId)}/series?${query.toString()}`, signal);
-  return normalizeSeries(payload);
+  return normalizeSeries(payload, day);
 }
 
 export async function loadDashboard(crewId: string, day: number, signal?: AbortSignal): Promise<DashboardData> {

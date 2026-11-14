@@ -119,7 +119,10 @@ export default function App() {
   }, [data]);
 
   useEffect(() => {
-    if (availableIndicatorIds.length === 0) return;
+    if (availableIndicatorIds.length === 0) {
+      if (selectedIndicatorId !== '') setSelectedIndicatorId('');
+      return;
+    }
     if (!availableIndicatorIds.includes(selectedIndicatorId)) {
       setSelectedIndicatorId(availableIndicatorIds[0]);
     }
@@ -132,7 +135,9 @@ export default function App() {
   ) ?? 'normal';
 
   const selectedIndicator = data?.indicators.find((indicator) => indicator.id === selectedIndicatorId);
-  const selectedIndicatorMeta = getIndicatorMeta(selectedIndicatorId);
+  const selectedIndicatorMeta = selectedIndicatorId
+    ? getIndicatorMeta(selectedIndicatorId)
+    : { label: 'Sin indicador', unit: '', howMeasured: 'No hay indicadores disponibles para este día.' };
   const trendPoints = useMemo(
     () => data ? getSeriesPoints(data.series, selectedIndicatorId) : [],
     [data, selectedIndicatorId],
@@ -171,8 +176,8 @@ export default function App() {
             type="button"
             className="theme-toggle"
             onClick={() => setDark((current) => !current)}
-            aria-label={dark ? 'Activar modo claro' : 'Activar modo oscuro'}
-            aria-pressed={!dark}
+            aria-label="Tema oscuro"
+            aria-pressed={dark}
           >
             <span aria-hidden="true">{dark ? '☼' : '☾'}</span>
           </button>
@@ -230,7 +235,7 @@ export default function App() {
               <span className="loader" aria-hidden="true" />
               <div>
                 <p className="eyebrow">Estado de misión</p>
-                <h2>Cargando datos reales…</h2>
+                <h2>{DEMO_MODE ? 'Cargando datos de demostración…' : 'Cargando datos reales…'}</h2>
                 <p>Consultando estado, alertas y serie de indicadores.</p>
               </div>
             </section>
@@ -239,7 +244,7 @@ export default function App() {
               {data.source === 'demo' && (
                 <div className="demo-banner" role="status">
                   <b>Modo demostración</b>
-                  <span>Actívalo con <code>VITE_DEMO_MODE=true</code>. La API real es el origen predeterminado.</span>
+                  <span>Los datos de este dashboard son simulados y no proceden de la API.</span>
                 </div>
               )}
 
@@ -293,9 +298,13 @@ export default function App() {
                       value={selectedIndicatorId}
                       onChange={(event) => setSelectedIndicatorId(event.target.value)}
                     >
-                      {availableIndicatorIds.map((id) => (
-                        <option value={id} key={id}>{getIndicatorMeta(id).label}</option>
-                      ))}
+                      {availableIndicatorIds.length > 0 ? (
+                        availableIndicatorIds.map((id) => (
+                          <option value={id} key={id}>{getIndicatorMeta(id).label}</option>
+                        ))
+                      ) : (
+                        <option value="">Sin indicadores</option>
+                      )}
                     </select>
                   </div>
 

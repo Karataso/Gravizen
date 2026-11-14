@@ -36,7 +36,7 @@ export interface HazardStatus {
 
 export interface BaselineStats {
   median: number;
-  mad: number;
+  mad: number | null;
 }
 
 export interface SeriesDataset {

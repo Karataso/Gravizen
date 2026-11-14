@@ -1,8 +1,8 @@
+import { useCallback, useEffect, useState } from 'react';
 import {
   Line,
   LineChart,
   ReferenceArea,
-  ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
@@ -106,7 +106,7 @@ export function HazardCard({ hazard }: { hazard: HazardStatus }) {
             ))}
           </ul>
         ) : (
-          <p>No se detectaron señales fuera de la línea base personal.</p>
+          <p>No hay motivos de evidencia disponibles para este peligro.</p>
         )}
       </div>
 
@@ -130,6 +130,44 @@ export function HazardCard({ hazard }: { hazard: HazardStatus }) {
   );
 }
 
+function useChartSize() {
+  const [element, setElement] = useState<HTMLDivElement | null>(null);
+  const [size, setSize] = useState({ width: 0, height: 0 });
+  const chartRef = useCallback((node: HTMLDivElement | null) => setElement(node), []);
+
+  useEffect(() => {
+    if (!element) {
+      setSize({ width: 0, height: 0 });
+      return;
+    }
+
+    const updateSize = () => {
+      const bounds = element.getBoundingClientRect();
+      const nextSize = {
+        width: Math.max(0, Math.floor(bounds.width)),
+        height: Math.max(0, Math.floor(bounds.height)),
+      };
+      setSize((current) => (
+        current.width === nextSize.width && current.height === nextSize.height
+          ? current
+          : nextSize
+      ));
+    };
+
+    updateSize();
+    if (typeof ResizeObserver === 'undefined') {
+      window.addEventListener('resize', updateSize);
+      return () => window.removeEventListener('resize', updateSize);
+    }
+
+    const observer = new ResizeObserver(updateSize);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [element]);
+
+  return { chartRef, ...size };
+}
+
 export function TrendChart({
   points,
   indicatorLabel,
@@ -139,6 +177,9 @@ export function TrendChart({
   indicatorLabel: string;
   unit: string;
 }) {
+  const { chartRef, width, height } = useChartSize();
+  const values = points.flatMap((point) => (point.value === null ? [] : [point.value]));
+
   if (points.length === 0) {
     return (
       <div className="chart-empty" role="status">
@@ -148,9 +189,21 @@ export function TrendChart({
     );
   }
 
-  const baselinePoint = points.find((point) => point.baselineLow !== null && point.baselineHigh !== null);
-  const values = points.flatMap((point) => (point.value === null ? [] : [point.value]));
-  const average = values.length > 0 ? values.reduce((sum, value) => sum + value, 0) / values.length : null;
+  if (values.length === 0) {
+    return (
+      <div className="chart-empty" role="status">
+        <strong>No hay lecturas en este periodo.</strong>
+        <span>La serie contiene días sin datos; no se interpolan valores.</span>
+      </div>
+    );
+  }
+
+  const baselinePoint = points.find((point) => point.baseline !== null);
+  const bandPoint = points.find((point) => point.baselineLow !== null && point.baselineHigh !== null);
+  const hasBand = bandPoint !== undefined
+    && bandPoint.baselineLow !== null
+    && bandPoint.baselineHigh !== null;
+  const average = values.reduce((sum, value) => sum + value, 0) / values.length;
   const latest = [...values].reverse()[0] ?? null;
   const missingDays = points.filter((point) => point.value === null).length;
   const summaryId = `trend-summary-${indicatorLabel.replace(/\s+/g, '-').toLowerCase()}`;
@@ -160,18 +213,26 @@ export function TrendChart({
       <figcaption className="sr-only" id={summaryId}>
         Tendencia de {indicatorLabel} durante {points.length} días. Último valor: {formatNumber(latest)} {unit}.
         Promedio: {formatNumber(average)} {unit}. Días sin dato: {missingDays}.
+        {baselinePoint?.baseline !== null && baselinePoint?.baseline !== undefined
+          ? ` Línea base: ${formatNumber(baselinePoint.baseline)} ${unit}.`
+          : ''}
+        {hasBand
+          ? ` Variabilidad esperada: de ${formatNumber(bandPoint?.baselineLow ?? null)} a ${formatNumber(bandPoint?.baselineHigh ?? null)} ${unit}.`
+          : ''}
       </figcaption>
-      <div className="chart-wrap" role="img" aria-labelledby={summaryId}>
-        <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
+      <div ref={chartRef} className="chart-wrap">
+        {width > 0 && height > 0 && (
           <LineChart
             accessibilityLayer
             data={points}
+            width={width}
+            height={height}
             margin={{ top: 10, right: 8, bottom: 0, left: -22 }}
           >
-            {baselinePoint && (
+            {bandPoint && hasBand && (
               <ReferenceArea
-                y1={baselinePoint.baselineLow ?? undefined}
-                y2={baselinePoint.baselineHigh ?? undefined}
+                y1={bandPoint.baselineLow ?? undefined}
+                y2={bandPoint.baselineHigh ?? undefined}
                 fill="var(--chart-band)"
                 stroke="none"
                 ifOverflow="extendDomain"
@@ -231,12 +292,12 @@ export function TrendChart({
               isAnimationActive={false}
             />
           </LineChart>
-        </ResponsiveContainer>
+        )}
       </div>
       <div className="chart-legend" aria-hidden="true">
         <span><i className="legend-value" />{indicatorLabel}</span>
-        <span><i className="legend-baseline" />Línea base</span>
-        <span><i className="legend-band" />Variabilidad esperada</span>
+        {baselinePoint && <span><i className="legend-baseline" />Línea base</span>}
+        {hasBand && <span><i className="legend-band" />Variabilidad esperada</span>}
       </div>
     </figure>
   );
@@ -303,7 +364,12 @@ export function AlertPanel({ hazards }: { hazards: HazardStatus[] }) {
         <span className="alert-count" aria-label={`${alerts.length} alertas`}>{alerts.length}</span>
       </div>
 
-      {alerts.length === 0 ? (
+      {hazards.length === 0 ? (
+        <div className="empty-panel alert-data-empty" role="status">
+          <strong>Sin datos de peligros.</strong>
+          <p>La API no devolvió peligros para este día; no se puede confirmar que no haya alertas.</p>
+        </div>
+      ) : alerts.length === 0 ? (
         <div className="all-clear" role="status">
           <span aria-hidden="true">✓</span>
           <div>
@@ -321,7 +387,11 @@ export function AlertPanel({ hazards }: { hazards: HazardStatus[] }) {
                   <SeverityBadge severity={alert.level} />
                   <b>{meta.label}</b>
                 </div>
-                {alert.why.map((reason) => <p key={reason}>{reason}</p>)}
+                {alert.why.length > 0 ? (
+                  alert.why.map((reason) => <p key={reason}>{reason}</p>)
+                ) : (
+                  <p>No hay motivos de evidencia disponibles.</p>
+                )}
                 <div className="alert-protocol">
                   <span><b>Proyección:</b> <ProjectionText days={alert.daysToThreshold} /></span>
                   <span><b>Acción:</b> {alert.action}</span>
