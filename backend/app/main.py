@@ -25,10 +25,11 @@ async def lifespan(app: FastAPI):
     init_db()
     print("   ✅ Base de datos inicializada")
 
-    # Sembrar datos (cuando ml/ exista)
-    # from app.services.data_loader import seed_database
-    # with get_db_context() as db:
-    #     seed_database(db)
+    # Sembrar tripulación mock (ml/ reemplazará las mediciones)
+    from app.database import SessionLocal
+    from app.services.data_loader import seed_database
+    with SessionLocal() as db:
+        seed_database(db)
 
     yield
 
