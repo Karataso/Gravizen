@@ -62,8 +62,9 @@ export async function syncPendingCheckIns(apiBaseUrl: string): Promise<number> {
 
   for (const item of pending) {
     try {
-      const { local_id, synced, ...payload } = item;
-      const res = await fetch(`${apiBaseUrl}/api/crew/${item.crew_id}/checkins`, {
+      // crew_id va en la URL; recorded_at es local. El resto es el body de la API.
+      const { local_id, synced, crew_id, recorded_at, ...payload } = item;
+      const res = await fetch(`${apiBaseUrl}/api/crew/${crew_id}/checkins`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -89,7 +90,7 @@ export async function saveReportOffline(
   const db = await getDB();
   return db.add('reports', {
     ...data,
-    status: 'in_transit',
+    status: 'transit',
     synced: false,
   });
 }
@@ -107,8 +108,9 @@ export async function syncPendingReports(apiBaseUrl: string): Promise<number> {
 
   for (const item of pending) {
     try {
-      const { local_id, synced, status, ...payload } = item;
-      const res = await fetch(`${apiBaseUrl}/api/reports`, {
+      // El reporte de la API solo lleva day, level, hazard y message.
+      const { local_id, synced, status, id, earth_reply, crew_id, created_at, ...payload } = item;
+      const res = await fetch(`${apiBaseUrl}/api/crew/${crew_id}/reports`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),

@@ -1,25 +1,25 @@
 export type HazardLevel = 'normal' | 'watch' | 'act' | 'emergency';
 
-export type ReportStatus = 'in_transit' | 'received' | 'responded';
+export type ReportStatus = 'transit' | 'received' | 'responded';
 
+// Claves = ids que espera la API (docs/api.md).
 export interface SymptomChecklist {
   headache: boolean;
-  blurred_vision: boolean;
+  vision_change: boolean;
   dizziness: boolean;
   nausea: boolean;
-  back_bone_pain: boolean;
-  fever_malaise: boolean;
-  self_harm_thoughts: boolean;
+  back_pain: boolean;
+  fever: boolean;
+  self_harm: boolean;
 }
 
-export interface CheckInPayload {
+export interface CheckInPayload extends SymptomChecklist {
   crew_id: string;
   day: number;
-  sleep_hours: number;
+  sleep_h: number;
   mood: number;
   stress: number;
-  symptoms: SymptomChecklist;
-  notes?: string;
+  note?: string;
   recorded_at: string;
 }
 
@@ -31,10 +31,9 @@ export interface OfflineCheckIn extends CheckInPayload {
 export interface EarthReportPayload {
   crew_id: string;
   day: number;
-  hazard_id: string;
+  hazard: string;
   level: HazardLevel;
-  summary: string;
-  action_taken: string;
+  message: string;
   created_at: string;
 }
 

@@ -12,22 +12,22 @@ interface CheckInFormProps {
 
 const INITIAL_SYMPTOMS: SymptomChecklist = {
   headache: false,
-  blurred_vision: false,
+  vision_change: false,
   dizziness: false,
   nausea: false,
-  back_bone_pain: false,
-  fever_malaise: false,
-  self_harm_thoughts: false,
+  back_pain: false,
+  fever: false,
+  self_harm: false,
 };
 
 const SYMPTOM_LABELS: { key: keyof SymptomChecklist; label: string; critical?: boolean }[] = [
   { key: 'headache', label: 'Dolor de cabeza nuevo o persistente' },
-  { key: 'blurred_vision', label: 'Visión borrosa o cambio al leer de cerca' },
+  { key: 'vision_change', label: 'Visión borrosa o cambio al leer de cerca' },
   { key: 'dizziness', label: 'Mareo al ponerse de pie' },
   { key: 'nausea', label: 'Náuseas o desorientación' },
-  { key: 'back_bone_pain', label: 'Dolor de espalda, cadera o huesos' },
-  { key: 'fever_malaise', label: 'Fiebre, tos o malestar general' },
-  { key: 'self_harm_thoughts', label: 'Pensamientos de hacerse daño', critical: true },
+  { key: 'back_pain', label: 'Dolor de espalda, cadera o huesos' },
+  { key: 'fever', label: 'Fiebre, tos o malestar general' },
+  { key: 'self_harm', label: 'Pensamientos de hacerse daño', critical: true },
 ];
 
 export const CheckInForm: React.FC<CheckInFormProps> = ({
@@ -55,45 +55,47 @@ export const CheckInForm: React.FC<CheckInFormProps> = ({
     setSavedMessage(null);
 
     const parsedSleep = parseFloat(sleepHours);
-    if (isNaN(parsedSleep) || parsedSleep < 0 || parsedSleep > 16) {
-      setError('Ingresa horas de sueño válidas entre 0 y 16.');
+    if (isNaN(parsedSleep) || parsedSleep < 3 || parsedSleep > 12) {
+      setError('Ingresa horas de sueño válidas entre 3 y 12.');
       return;
     }
 
     const now = new Date().toISOString();
 
     await saveCheckInOffline({
+      ...symptoms,
       crew_id: crewId,
       day: currentDay,
-      sleep_hours: parsedSleep,
+      sleep_h: parsedSleep,
       mood,
       stress,
-      symptoms,
-      notes: notes.trim() || undefined,
+      note: notes.trim() || undefined,
       recorded_at: now,
     });
 
     // Protocolo crítico: pensamientos de hacerse daño -> Emergencia inmediata + modal de apoyo
-    if (symptoms.self_harm_thoughts) {
+    if (symptoms.self_harm) {
       await saveReportOffline({
         crew_id: crewId,
         day: currentDay,
-        hazard_id: 'isolation',
+        hazard: 'iso',
         level: 'emergency',
-        summary: 'EMERGENCIA DE SALUD MENTAL: Check-in reporta pensamientos de hacerse daño.',
-        action_taken: 'Activado protocolo de apoyo inmediato a bordo y alerta urgente al médico de vuelo.',
+        message:
+          'EMERGENCIA DE SALUD MENTAL: Check-in reporta pensamientos de hacerse daño. ' +
+          'Acción tomada: protocolo de apoyo inmediato a bordo y alerta urgente al médico de vuelo.',
         created_at: now,
       });
       setShowEmergencyModal(true);
-    } else if (symptoms.blurred_vision) {
+    } else if (symptoms.vision_change) {
       // Visión borrosa -> Alerta Actuar siempre (posible SANS)
       await saveReportOffline({
         crew_id: crewId,
         day: currentDay,
-        hazard_id: 'gravity',
+        hazard: 'grav',
         level: 'act',
-        summary: 'Síntoma ocular reportado: visión borrosa / cambio al leer de cerca (posible SANS).',
-        action_taken: 'Solicitado examen ocular de agudeza y fondo de ojo.',
+        message:
+          'Síntoma ocular reportado: visión borrosa / cambio al leer de cerca (posible SANS). ' +
+          'Acción tomada: solicitado examen ocular de agudeza y fondo de ojo.',
         created_at: now,
       });
     }
@@ -122,12 +124,12 @@ export const CheckInForm: React.FC<CheckInFormProps> = ({
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Horas de sueño */}
         <div>
-          <label className="block text-sm text-slate-300 mb-1">Horas de sueño (0 - 16 h)</label>
+          <label className="block text-sm text-slate-300 mb-1">Horas de sueño (3 - 12 h)</label>
           <input
             type="number"
             step="0.5"
-            min="0"
-            max="16"
+            min="3"
+            max="12"
             value={sleepHours}
             onChange={(e) => setSleepHours(e.target.value)}
             className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-sky-500"
@@ -148,7 +150,7 @@ export const CheckInForm: React.FC<CheckInFormProps> = ({
                 className={`py-2 rounded-lg font-medium border transition ${
                   mood === val
                     ? 'bg-sky-600 border-sky-400 text-white'
-                    : 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-750'
+                    : 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700'
                 }`}
               >
                 {val}
@@ -175,7 +177,7 @@ export const CheckInForm: React.FC<CheckInFormProps> = ({
                 className={`py-2 rounded-lg font-medium border transition ${
                   stress === val
                     ? 'bg-amber-600 border-amber-400 text-white'
-                    : 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-750'
+                    : 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700'
                 }`}
               >
                 {val}
@@ -249,11 +251,18 @@ export const CheckInForm: React.FC<CheckInFormProps> = ({
 
       {/* Modal obligatorio de apoyo inmediato si marca pensamientos de hacerse daño */}
       {showEmergencyModal && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
+        <div
+          role="alertdialog"
+          aria-modal="true"
+          aria-labelledby="emergency-title"
+          className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50"
+        >
           <div className="bg-slate-900 border-2 border-red-500 rounded-2xl p-6 max-w-md w-full space-y-4">
             <div className="flex items-center gap-3 text-red-400">
               <HeartHandshake className="w-8 h-8 shrink-0" />
-              <h3 className="text-lg font-bold">No estás solo · Protocolo de Apoyo Activo</h3>
+              <h3 id="emergency-title" className="text-lg font-bold">
+                No estás solo · Protocolo de Apoyo Activo
+              </h3>
             </div>
             <p className="text-sm text-slate-200 leading-relaxed">
               Hemos activado una alerta prioritaria de <strong>Emergencia</strong> con el médico de vuelo y el comandante de a bordo.

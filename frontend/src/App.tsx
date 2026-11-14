@@ -63,8 +63,8 @@ export function App() {
       {/* Vista activa */}
       {tab === 'checkin' ? (
         <CheckInForm
-          crewId="astro-01"
-          currentDay={98}
+          crewId="c1"
+          currentDay={118}
           isOnline={isOnline}
           onSaved={() => {
             refreshPendingCount();
@@ -73,8 +73,8 @@ export function App() {
         />
       ) : (
         <EarthLinkPanel
-          crewId="astro-01"
-          currentDay={98}
+          crewId="c1"
+          currentDay={118}
           onReportCreated={() => {
             refreshPendingCount();
             triggerSync();

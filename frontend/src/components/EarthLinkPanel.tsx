@@ -56,7 +56,7 @@ export const EarthLinkPanel: React.FC<EarthLinkPanelProps> = ({
     if (totalElapsed >= DELAY_SECONDS) {
       return { status: 'received', elapsedSec: totalElapsed };
     }
-    return { status: 'in_transit', elapsedSec: totalElapsed };
+    return { status: 'transit', elapsedSec: totalElapsed };
   };
 
   const handleSendReport = async (e: React.FormEvent) => {
@@ -66,10 +66,12 @@ export const EarthLinkPanel: React.FC<EarthLinkPanelProps> = ({
     await saveReportOffline({
       crew_id: crewId,
       day: currentDay,
-      hazard_id: 'manual_report',
+      hazard: 'dist',
       level,
-      summary: summary.trim(),
-      action_taken: actionTaken.trim() || 'Protocolo autónomo inicial ejecutado a bordo.',
+      message:
+        summary.trim() +
+        ' — Acción tomada: ' +
+        (actionTaken.trim() || 'protocolo autónomo inicial ejecutado a bordo.'),
       created_at: new Date().toISOString(),
     });
 
@@ -152,7 +154,7 @@ export const EarthLinkPanel: React.FC<EarthLinkPanelProps> = ({
           reports.map((rep, idx) => {
             const { status, elapsedSec } = computeStatus(rep.created_at);
             const remainingToReceive = Math.max(0, DELAY_SECONDS - elapsedSec);
-            const overdueAct = rep.level === 'act' && status === 'in_transit' && elapsedSec > 600;
+            const overdueAct = rep.level === 'act' && status === 'transit' && elapsedSec > 600;
 
             return (
               <div
@@ -181,15 +183,14 @@ export const EarthLinkPanel: React.FC<EarthLinkPanelProps> = ({
                         : 'bg-slate-700 text-slate-300'
                     }`}
                   >
-                    {status === 'in_transit' &&
+                    {status === 'transit' &&
                       `En tránsito (${Math.ceil(remainingToReceive / 60)} min restantes)`}
                     {status === 'received' && 'Recibido en Tierra · Esperando médico'}
                     {status === 'responded' && 'Respondido por Control de Misión'}
                   </span>
                 </div>
 
-                <p className="text-sm font-medium text-white">{rep.summary}</p>
-                <p className="text-xs text-slate-400">Acción local: {rep.action_taken}</p>
+                <p className="text-sm font-medium text-white">{rep.message}</p>
 
                 {overdueAct && (
                   <div className="flex items-center gap-1.5 text-xs text-orange-300 bg-orange-950/50 p-2 rounded">
