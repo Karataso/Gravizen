@@ -2,6 +2,20 @@ export type Severity = 'normal' | 'watch' | 'act' | 'emergency';
 
 export type HazardId = 'rad' | 'iso' | 'dist' | 'grav' | 'env' | (string & {});
 
+export type MissionProfile = 'station' | 'moon' | 'mars_transit';
+
+export interface MissionReport {
+  id: string;
+  day: number;
+  level: Severity;
+  hazard: string | null;
+  message: string;
+  status: 'transit' | 'received' | 'responded';
+  etaMinutes: number;
+  createdAt: string;
+  responseMessage: string | null;
+}
+
 export type EscalationTarget = 'crew' | 'flight_surgeon' | 'mission_control' | (string & {});
 
 export interface CrewMember {
