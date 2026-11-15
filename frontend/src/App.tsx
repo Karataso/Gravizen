@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react';
-import { RefreshCw, Wifi, WifiOff } from 'lucide-react';
 import { ApiError, DEMO_MODE, fetchCrew, getSeriesPoints, loadDashboard } from './api';
 import {
   AlertPanel,
@@ -17,6 +16,12 @@ import { useSyncQueue } from './hooks/useSyncQueue';
 import type { CrewMember, DashboardData, Severity } from './types';
 
 type AppView = 'dashboard' | 'checkin' | 'earth';
+
+function initialView(): AppView {
+  const requestedView = new URLSearchParams(window.location.search).get('view');
+  if (requestedView === 'checkin' || requestedView === 'earth') return requestedView;
+  return 'dashboard';
+}
 
 function isAbortError(error: unknown): boolean {
   return error instanceof DOMException && error.name === 'AbortError';
@@ -57,14 +62,7 @@ export default function App() {
   const [dashboardError, setDashboardError] = useState<unknown>();
   const [reloadToken, setReloadToken] = useState(0);
   const [selectedIndicatorId, setSelectedIndicatorId] = useState('sleep_h');
-  const [dark, setDark] = useState(() => {
-    try {
-      return window.localStorage.getItem('vitalis-theme') !== 'light';
-    } catch {
-      return true;
-    }
-  });
-  const [view, setView] = useState<AppView>('dashboard');
+  const [view, setView] = useState<AppView>(initialView);
   const {
     isOnline,
     pendingCount,
@@ -72,17 +70,6 @@ export default function App() {
     triggerSync,
     refreshPendingCount,
   } = useSyncQueue();
-
-  useEffect(() => {
-    document.documentElement.dataset.theme = dark ? 'dark' : 'light';
-    document.documentElement.style.colorScheme = dark ? 'dark' : 'light';
-    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', dark ? '#07131f' : '#eef4f7');
-    try {
-      window.localStorage.setItem('vitalis-theme', dark ? 'dark' : 'light');
-    } catch {
-      // La aplicación sigue funcionando si el navegador bloquea el almacenamiento local.
-    }
-  }, [dark]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -158,9 +145,9 @@ export default function App() {
   const effectiveCrewId = crewId || crew[0]?.id || 'c1';
   const currentMissionDay = data?.missionDay ?? day;
 
-  const handleCheckInSaved = () => {
-    void refreshPendingCount();
-    void triggerSync();
+  const handleCheckInSaved = async () => {
+    await triggerSync();
+    await refreshPendingCount();
     retry();
   };
 
@@ -176,14 +163,14 @@ export default function App() {
       <header className="topbar">
         <div className="brand">
           <span className="brand-mark" aria-hidden="true">V</span>
-          <span>
-            <b>VITALIS</b>
-            <small>Sistema de salud en misión</small>
-          </span>
+          <div className="brand-text">
+            <span className="brand-title">VITALIS</span>
+            <span className="brand-subtitle">Salud en misión</span>
+          </div>
         </div>
         <div className="top-actions">
           <span className={`connection ${data?.source === 'demo' ? 'demo' : ''}`}>
-            <i aria-hidden="true" />
+            <i className="indicator" aria-hidden="true" />
             {crewError || dashboardError
               ? 'API no disponible'
               : data?.source === 'demo'
@@ -192,15 +179,6 @@ export default function App() {
                   ? 'API conectada'
                   : 'Conectando…'}
           </span>
-          <button
-            type="button"
-            className="theme-toggle"
-            onClick={() => setDark((current) => !current)}
-            aria-label="Tema oscuro"
-            aria-pressed={dark}
-          >
-            <span aria-hidden="true">{dark ? '☼' : '☾'}</span>
-          </button>
         </div>
       </header>
 
@@ -233,22 +211,25 @@ export default function App() {
         </div>
 
         <div className="sync-controls">
-          <span className={`sync-state ${isOnline ? 'online' : 'offline'}`} role="status">
-            {isOnline ? <Wifi aria-hidden="true" /> : <WifiOff aria-hidden="true" />}
+          <span className={`sync-status ${isOnline ? 'online' : 'offline'}`} role="status">
+            <span className="sync-dot" aria-hidden="true" />
             {isOnline ? 'Conectado' : 'Sin conexión'}
           </span>
           {pendingCount > 0 && (
-            <span className="pending-count" aria-live="polite">
+            <span className="pending-badge" aria-live="polite">
               {pendingCount} pendiente{pendingCount === 1 ? '' : 's'}
             </span>
           )}
           <button
             type="button"
-            className="sync-button"
+            className={`sync-btn ${isSyncing ? 'syncing' : ''}`}
             onClick={() => void triggerSync()}
             disabled={!isOnline || isSyncing}
           >
-            <RefreshCw className={isSyncing ? 'spinning' : ''} aria-hidden="true" />
+            <span className="sync-icon" aria-hidden="true">
+              <span className="sync-arrow" />
+              <span className="sync-arrow" />
+            </span>
             {isSyncing ? 'Sincronizando…' : 'Sincronizar'}
           </button>
         </div>
@@ -256,12 +237,12 @@ export default function App() {
 
       <div className="layout">
         <aside className="crew-sidebar">
-          <div className="aside-heading">
+          <div className="aside-header">
             <div>
               <p className="eyebrow">Misión Asteria</p>
               <h1>Tripulación</h1>
             </div>
-            <span className="mission-day">DÍA {data?.missionDay ?? day}</span>
+            <span className="mission-day-badge">DÍA {data?.missionDay ?? day}</span>
           </div>
 
           {crewLoading ? (
@@ -271,7 +252,7 @@ export default function App() {
           )}
 
           <div className="privacy-note">
-            <span aria-hidden="true">⌁</span>
+            <span className="privacy-icon" aria-hidden="true">🔒</span>
             <p>
               <b>Privacidad primero</b>
               El resumen solo muestra nombre, rol y semáforo. No expone datos clínicos de otras personas.
@@ -300,120 +281,126 @@ export default function App() {
           ) : (
             <>
               {crewError ? (
-            <section className="state-panel error-state" role="alert">
-              <span className="state-icon" aria-hidden="true">!</span>
-              <div>
-                <p className="eyebrow">Conexión con la API</p>
-                <h2>No pudimos cargar la tripulación</h2>
-                <p>{errorMessage(crewError)}</p>
-                <button type="button" className="primary-button" onClick={retry}>Reintentar conexión</button>
-              </div>
-            </section>
-          ) : dashboardError ? (
-            <section className="state-panel error-state" role="alert">
-              <span className="state-icon" aria-hidden="true">!</span>
-              <div>
-                <p className="eyebrow">Estado de misión</p>
-                <h2>No pudimos cargar el día {day}</h2>
-                <p>{errorMessage(dashboardError)}</p>
-                <button type="button" className="primary-button" onClick={retry}>Reintentar conexión</button>
-              </div>
-            </section>
-          ) : dashboardLoading || !data ? (
-            <section className="state-panel loading-state" aria-live="polite" aria-busy="true">
-              <span className="loader" aria-hidden="true" />
-              <div>
-                <p className="eyebrow">Estado de misión</p>
-                <h2>{DEMO_MODE ? 'Cargando datos de demostración…' : 'Cargando datos reales…'}</h2>
-                <p>Consultando estado, alertas y serie de indicadores.</p>
-              </div>
-            </section>
-          ) : (
-            <>
-              {data.source === 'demo' && (
-                <div className="demo-banner" role="status">
-                  <b>Modo demostración</b>
-                  <span>Los datos de este dashboard son simulados y no proceden de la API.</span>
-                </div>
-              )}
-
-              <div className="welcome">
-                <div>
-                  <p className="eyebrow">Estado personal · {selectedMember?.role ?? 'Tripulación'}</p>
-                  <h2>Hola, {selectedMember?.name ?? 'tripulante'}</h2>
-                  <p className="muted">
-                    {profileLabel(data.profile)} · Esta lectura compara tu tendencia con tu propia línea base.
-                  </p>
-                </div>
-                <SeverityBadge severity={highestSeverity} />
-              </div>
-
-              <DaySlider day={day} onChange={setDay} />
-
-              <section aria-labelledby="hazards-title">
-                <div className="section-title hazards-title">
+                <section className="state-panel" role="alert">
+                  <span className="state-icon" aria-hidden="true">!</span>
                   <div>
-                    <p className="eyebrow">Peligros de NASA</p>
-                    <h2 id="hazards-title">Estado de los peligros</h2>
+                    <p className="eyebrow">Conexión con la API</p>
+                    <h2>No pudimos cargar la tripulación</h2>
+                    <p>{errorMessage(crewError)}</p>
+                    <button type="button" className="primary-btn" onClick={retry}>Reintentar conexión</button>
                   </div>
-                  <span className="section-hint">{data.hazards.length} de 5 reportados · color + icono + nivel</span>
-                </div>
-                {data.hazards.length > 0 ? (
-                  <div className="hazards-grid">
-                    {data.hazards.map((hazard) => <HazardCard hazard={hazard} key={hazard.id} />)}
-                  </div>
-                ) : (
-                  <div className="empty-panel" role="status">La API no devolvió peligros para este día.</div>
-                )}
-              </section>
-
-              <div className="lower-grid">
-                <section className="panel trend" aria-labelledby="trend-title">
-                  <div className="section-title trend-heading">
-                    <div>
-                      <p className="eyebrow">Últimos 30 días</p>
-                      <h2 id="trend-title">Tendencia de {selectedIndicatorMeta.label}</h2>
-                    </div>
-                    <div className="trend-stat">
-                      <strong>{trendAverage === null ? '—' : trendAverage.toLocaleString('es-ES', { maximumFractionDigits: 1 })} {selectedIndicatorMeta.unit}</strong>
-                      <small>promedio</small>
-                    </div>
-                  </div>
-
-                  <div className="indicator-picker">
-                    <label htmlFor="indicator-select">Indicador</label>
-                    <select
-                      id="indicator-select"
-                      value={effectiveIndicatorId}
-                      onChange={(event) => setSelectedIndicatorId(event.target.value)}
-                    >
-                      {availableIndicatorIds.length > 0 ? (
-                        availableIndicatorIds.map((id) => (
-                          <option value={id} key={id}>{getIndicatorMeta(id).label}</option>
-                        ))
-                      ) : (
-                        <option value="">Sin indicadores</option>
-                      )}
-                    </select>
-                  </div>
-
-                  <TrendChart
-                    points={trendPoints}
-                    indicatorLabel={selectedIndicatorMeta.label}
-                    unit={selectedIndicatorMeta.unit}
-                  />
-                  <IndicatorSummary indicator={selectedIndicator} />
                 </section>
+              ) : dashboardError ? (
+                <section className="state-panel" role="alert">
+                  <span className="state-icon" aria-hidden="true">!</span>
+                  <div>
+                    <p className="eyebrow">Estado de misión</p>
+                    <h2>No pudimos cargar el día {day}</h2>
+                    <p>{errorMessage(dashboardError)}</p>
+                    <button type="button" className="primary-btn" onClick={retry}>Reintentar conexión</button>
+                  </div>
+                </section>
+              ) : dashboardLoading || !data ? (
+                <section className="state-panel" aria-live="polite" aria-busy="true">
+                  <span className="loader" aria-hidden="true" />
+                  <div>
+                    <p className="eyebrow">Estado de misión</p>
+                    <h2>{DEMO_MODE ? 'Cargando datos de demostración…' : 'Cargando datos reales…'}</h2>
+                    <p>Consultando estado, alertas y serie de indicadores.</p>
+                  </div>
+                </section>
+              ) : (
+                <>
+                  {data.source === 'demo' && (
+                    <div className="demo-banner" role="status">
+                      <b>Modo demostración</b>
+                      <span>Los datos de este dashboard son simulados y no proceden de la API.</span>
+                    </div>
+                  )}
 
-                <AlertPanel hazards={data.hazards} />
-              </div>
+                  <div className="welcome">
+                    <div className="welcome-text">
+                      <p className="eyebrow">Estado personal · {selectedMember?.role ?? 'Tripulación'}</p>
+                      <h2>Hola, {selectedMember?.name ?? 'tripulante'}</h2>
+                      <p className="welcome-subtitle muted">
+                        {profileLabel(data.profile)} · Esta lectura compara tu tendencia con tu propia línea base.
+                      </p>
+                    </div>
+                    <SeverityBadge severity={highestSeverity} />
+                  </div>
 
-              <footer className="app-footer">
-                <p><b>Vitalis apoya la decisión; no diagnostica.</b> Los datos de la fisiología son simulados y los umbrales de prototipo deben validarse con el médico de vuelo.</p>
-                {DEMO_MODE && <span>Demostración local · sin datos clínicos reales</span>}
-              </footer>
-            </>
-          )}
+                  <DaySlider day={day} onChange={setDay} />
+
+                  <section aria-labelledby="hazards-title">
+                    <div className="section-header">
+                      <div>
+                        <p className="eyebrow">Peligros de NASA</p>
+                        <h2 id="hazards-title">Estado de los peligros</h2>
+                      </div>
+                      <span className="section-hint">{data.hazards.length} de 5 reportados · círculo + nivel</span>
+                    </div>
+                    {data.hazards.length > 0 ? (
+                      <div className="hazards-grid">
+                        {data.hazards.map((hazard) => <HazardCard hazard={hazard} key={hazard.id} />)}
+                      </div>
+                    ) : (
+                      <div className="empty-panel" role="status">La API no devolvió peligros para este día.</div>
+                    )}
+                  </section>
+
+                  <div className="lower-grid">
+                    <section className="panel trend-panel" aria-labelledby="trend-title">
+                      <div className="panel-header">
+                        <div>
+                          <p className="eyebrow">Últimos 30 días</p>
+                          <h2 id="trend-title">Tendencia de {selectedIndicatorMeta.label}</h2>
+                        </div>
+                        <div className="trend-stats">
+                          <div className="trend-avg">
+                            <span className="trend-avg-value">
+                              {trendAverage === null ? '—' : trendAverage.toLocaleString('es-ES', { maximumFractionDigits: 1 })}
+                            </span>
+                            <span className="trend-avg-label">{selectedIndicatorMeta.unit} promedio</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="indicator-select">
+                        <label htmlFor="indicator-select">Indicador</label>
+                        <select
+                          id="indicator-select"
+                          value={effectiveIndicatorId}
+                          onChange={(event) => setSelectedIndicatorId(event.target.value)}
+                        >
+                          {availableIndicatorIds.length > 0 ? (
+                            availableIndicatorIds.map((id) => (
+                              <option value={id} key={id}>{getIndicatorMeta(id).label}</option>
+                            ))
+                          ) : (
+                            <option value="">Sin indicadores</option>
+                          )}
+                        </select>
+                      </div>
+
+                      <div className="chart-wrapper">
+                        <TrendChart
+                          points={trendPoints}
+                          indicatorLabel={selectedIndicatorMeta.label}
+                          unit={selectedIndicatorMeta.unit}
+                        />
+                      </div>
+                      <IndicatorSummary indicator={selectedIndicator} />
+                    </section>
+
+                    <AlertPanel hazards={data.hazards} />
+                  </div>
+
+                  <footer className="app-footer">
+                    <p><b>Vitalis apoya la decisión; no diagnostica.</b> Los datos de la fisiología son simulados y los umbrales de prototipo deben validarse con el médico de vuelo.</p>
+                    {DEMO_MODE && <span>Demostración local · sin datos clínicos reales</span>}
+                  </footer>
+                </>
+              )}
             </>
           )}
         </main>
