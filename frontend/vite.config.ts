@@ -79,7 +79,6 @@ export default defineConfig({
   build: {
     target: 'es2022',
     cssCodeSplit: true,
-    minify: 'esbuild',
     rollupOptions: {
       output: {
         manualChunks: (id) => {
