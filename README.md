@@ -49,15 +49,6 @@ Ver [`ml/README.md`](ml/README.md) para interfaz, métricas y limitaciones.
 
 Cada carpeta tiene un dueño en [`.github/CODEOWNERS`](.github/CODEOWNERS). Ramas: `feat/<rol>-<tema>`.
 
-| # | Rol | Persona | GitHub |
-|---|---|---|---|
-| 1 | Líder e integración | TODO | @Karataso |
-| 2 | Frontend: mapa y dashboard | TODO | TODO |
-| 3 | Frontend: check-in y contenido | TODO | TODO |
-| 4 | Backend | Rayden | @Shadow1987-oss |
-| 5 | Datos y modelo | TODO | TODO |
-| 6 | Salud, contenido y pitch | TODO | TODO |
-
 ## Reglas de git
 
 - `main` protegida: solo PR, 1 revisión, squash merge.
