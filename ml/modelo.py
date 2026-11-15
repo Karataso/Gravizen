@@ -233,7 +233,7 @@ def _indicator(ind_id, value, median, mad, level, label, action, unit=''):
         'value': round(float(value), 2),
         'baseline': round(float(median), 2),
         'level': level,
-        'z': round((value - median) / mad, 2),
+        'z': round(float((value - median) / mad), 2),
         'why': why,
         'action': action if level != 'normal' else None,
         'escalate': escalate,
@@ -404,7 +404,10 @@ if __name__ == '__main__':
     print('Matriz de Confusion:\n', metrics['confusion_matrix'])
 
     print('\n--- 3. Generando grafica ---')
-    plot_evaluation_results(metrics, df_eval)
+    try:
+        plot_evaluation_results(metrics, df_eval)
+    except ModuleNotFoundError:
+        print('Falta matplotlib/seaborn. Instala: pip install -r ml/requirements.txt')
 
     print('\n--- 4. Probando evaluate(crew_id, day) ---')
     result = evaluate('c1', 30)
