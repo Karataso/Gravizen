@@ -17,7 +17,7 @@ def load_and_normalize_dataset(csv_path="dataset_salud_espacial_50_astronautas.c
     df = pd.read_csv(csv_path)
     print(f"-> Columnas originales leidas del CSV: {df.columns.tolist()}")
     
-    # Mapeo exacto basado en la estructura de tu dataset
+    # Mapeo exacto basado en la estructura del dataset
     column_mapping = {
         'id_astronauta': 'crew_id',
         'dia_mision': 'day',
