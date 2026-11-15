@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Menu, X } from 'lucide-react';
 import { ApiError, DEMO_MODE, fetchCrew, getSeriesPoints, loadDashboard, updateCrewProfile } from './api';
 import {
   AlertPanel,
@@ -16,6 +17,12 @@ import { useSyncQueue } from './hooks/useSyncQueue';
 import type { CrewMember, DashboardData, MissionProfile, Severity } from './types';
 
 type AppView = 'dashboard' | 'checkin' | 'earth';
+
+const VIEWS: { id: AppView; label: string; short: string }[] = [
+  { id: 'dashboard', label: 'Dashboard', short: 'Dashboard' },
+  { id: 'checkin', label: 'Check-in diario', short: 'Check-in' },
+  { id: 'earth', label: 'Enlace con Tierra', short: 'Tierra' },
+];
 
 function initialView(): AppView {
   const requestedView = new URLSearchParams(window.location.search).get('view');
@@ -63,6 +70,9 @@ export default function App() {
   const [reloadToken, setReloadToken] = useState(0);
   const [selectedIndicatorId, setSelectedIndicatorId] = useState('sleep_h');
   const [view, setView] = useState<AppView>(initialView);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
+  const firstMenuItemRef = useRef<HTMLButtonElement>(null);
   const [profileSaving, setProfileSaving] = useState(false);
   const {
     isOnline,
@@ -175,6 +185,18 @@ export default function App() {
       <a className="skip-link" href="#main-content">Saltar al contenido principal</a>
 
       <header className="topbar">
+        <button
+          ref={menuButtonRef}
+          type="button"
+          className="menu-btn"
+          onClick={() => setMenuOpen((open) => !open)}
+          aria-expanded={menuOpen}
+          aria-controls="mobile-menu"
+          aria-label={menuOpen ? 'Cerrar menú' : 'Abrir menú'}
+        >
+          {menuOpen ? <X size={20} aria-hidden="true" /> : <Menu size={20} aria-hidden="true" />}
+        </button>
+
         <div className="brand">
           <span className="brand-mark" aria-hidden="true">V</span>
           <div className="brand-text">
@@ -182,77 +204,75 @@ export default function App() {
             <span className="brand-subtitle">Salud en misión</span>
           </div>
         </div>
-        <div className="top-actions">
-          <span className={`connection ${data?.source === 'demo' ? 'demo' : ''}`}>
-            <i className="indicator" aria-hidden="true" />
-            {crewError || dashboardError
-              ? 'API no disponible'
-              : data?.source === 'demo'
-                ? 'Datos de demostración'
-                : data
-                  ? 'API conectada'
-                  : 'Conectando…'}
-          </span>
-        </div>
+
+        <nav className="module-nav" aria-label="Módulos de Vitalis">
+          <div className="module-tabs">
+            {VIEWS.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                className={view === item.id ? 'module-tab active' : 'module-tab'}
+                onClick={() => setView(item.id)}
+                aria-pressed={view === item.id}
+              >
+                <span className="module-label-full">{item.label}</span>
+                <span className="module-label-short">{item.short}</span>
+              </button>
+            ))}
+          </div>
+
+          <div className="sync-controls">
+            {pendingCount > 0 && (
+              <span className="pending-badge" aria-live="polite">
+                {pendingCount} pendiente{pendingCount === 1 ? '' : 's'}
+              </span>
+            )}
+            <button
+              type="button"
+              className={`sync-btn ${isSyncing ? 'syncing' : ''}`}
+              onClick={() => void triggerSync()}
+              disabled={!isOnline || isSyncing}
+              aria-label={isSyncing ? 'Sincronizando datos' : 'Sincronizar datos'}
+            >
+              <span className="sync-icon" aria-hidden="true">
+                <span className="sync-arrow" />
+                <span className="sync-arrow" />
+              </span>
+              <span className="sync-label">
+                {isSyncing ? 'Sincronizando…' : 'Sincronizar'}
+              </span>
+            </button>
+          </div>
+        </nav>
       </header>
 
-      <nav className="module-nav" aria-label="Módulos de Vitalis">
-        <div className="module-tabs">
-          <button
-            type="button"
-            className={view === 'dashboard' ? 'module-tab active' : 'module-tab'}
-            onClick={() => setView('dashboard')}
-            aria-pressed={view === 'dashboard'}
+      {menuOpen && (
+        <div className="mobile-menu-overlay" onClick={() => setMenuOpen(false)}>
+          <nav
+            id="mobile-menu"
+            className="mobile-menu"
+            aria-label="Módulos de Vitalis"
+            onClick={(event) => event.stopPropagation()}
           >
-            Dashboard
-          </button>
-          <button
-            type="button"
-            className={view === 'checkin' ? 'module-tab active' : 'module-tab'}
-            onClick={() => setView('checkin')}
-            aria-pressed={view === 'checkin'}
-          >
-            <span className="module-label-full">Check-in diario</span>
-            <span className="module-label-short">Check-in</span>
-          </button>
-          <button
-            type="button"
-            className={view === 'earth' ? 'module-tab active' : 'module-tab'}
-            onClick={() => setView('earth')}
-            aria-pressed={view === 'earth'}
-          >
-            <span className="module-label-full">Enlace con Tierra</span>
-            <span className="module-label-short">Tierra</span>
-          </button>
+            <p className="eyebrow">Módulos</p>
+            {VIEWS.map((item, index) => (
+              <button
+                key={item.id}
+                ref={index === 0 ? firstMenuItemRef : undefined}
+                type="button"
+                className={view === item.id ? 'active' : ''}
+                onClick={() => {
+                  setView(item.id);
+                  setMenuOpen(false);
+                }}
+                aria-pressed={view === item.id}
+              >
+                {item.label}
+              </button>
+            ))}
+          </nav>
         </div>
-
-        <div className="sync-controls">
-          <span className={`sync-status ${isOnline ? 'online' : 'offline'}`} role="status">
-            <span className="sync-dot" aria-hidden="true" />
-            {isOnline ? 'Conectado' : 'Sin conexión'}
-          </span>
-          {pendingCount > 0 && (
-            <span className="pending-badge" aria-live="polite">
-              {pendingCount} pendiente{pendingCount === 1 ? '' : 's'}
-            </span>
-          )}
-          <button
-            type="button"
-            className={`sync-btn ${isSyncing ? 'syncing' : ''}`}
-            onClick={() => void triggerSync()}
-            disabled={!isOnline || isSyncing}
-            aria-label={isSyncing ? 'Sincronizando datos' : 'Sincronizar datos'}
-          >
-            <span className="sync-icon" aria-hidden="true">
-              <span className="sync-arrow" />
-              <span className="sync-arrow" />
-            </span>
-            <span className="sync-label">
-              {isSyncing ? 'Sincronizando…' : 'Sincronizar'}
-            </span>
-          </button>
-        </div>
-      </nav>
+      )}
 
       <div className="layout">
         <aside className="crew-sidebar">

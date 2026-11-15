@@ -449,17 +449,17 @@ export function DaySlider({ day, onChange }: { day: number; onChange: (day: numb
     <div className="day-slider">
       <label htmlFor="mission-day">
         <span>Día de misión</span>
-        <output htmlFor="mission-day">Día {day} de 120</output>
+        <output htmlFor="mission-day">Día {day} de 119</output>
       </label>
       <input
         id="mission-day"
         type="range"
         min="0"
-        max="120"
+        max="119"
         step="1"
         value={day}
         onChange={(event) => onChange(Number(event.target.value))}
-        aria-valuetext={`Día ${day} de 120`}
+        aria-valuetext={`Día ${day} de 119`}
       />
       <div className="day-scale" aria-hidden="true"><span>Lanzamiento</span><span>Final</span></div>
     </div>
