@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { RefreshCw, Wifi, WifiOff } from 'lucide-react';
-import { ApiError, DEMO_MODE, fetchCrew, getSeriesPoints, loadDashboard } from './api';
+import { ApiError, DEMO_MODE, fetchCrew, getSeriesPoints, loadDashboard, updateCrewProfile } from './api';
 import {
   AlertPanel,
   CrewSwitcher,
@@ -14,7 +14,7 @@ import { getIndicatorMeta, severityRank } from './domain';
 import { CheckInForm } from './components/CheckInForm';
 import { EarthLinkPanel } from './components/EarthLinkPanel';
 import { useSyncQueue } from './hooks/useSyncQueue';
-import type { CrewMember, DashboardData, Severity } from './types';
+import type { CrewMember, DashboardData, MissionProfile, Severity } from './types';
 
 type AppView = 'dashboard' | 'checkin' | 'earth';
 
@@ -65,6 +65,7 @@ export default function App() {
     }
   });
   const [view, setView] = useState<AppView>('dashboard');
+  const [profileSaving, setProfileSaving] = useState(false);
   const {
     isOnline,
     pendingCount,
@@ -169,6 +170,19 @@ export default function App() {
   const handleReportCreated = () => {
     void refreshPendingCount();
     void triggerSync();
+  };
+
+  const handleProfileChange = async (profile: MissionProfile) => {
+    if (DEMO_MODE) return;
+    setProfileSaving(true);
+    try {
+      await updateCrewProfile(effectiveCrewId, profile);
+      retry();
+    } catch (error) {
+      setDashboardError(error);
+    } finally {
+      setProfileSaving(false);
+    }
   };
 
   return (
@@ -346,6 +360,19 @@ export default function App() {
                   <p className="muted">
                     {profileLabel(data.profile)} · Esta lectura compara tu tendencia con tu propia línea base.
                   </p>
+                  <div className="indicator-picker">
+                    <label htmlFor="profile-select">Perfil de misión</label>
+                    <select
+                      id="profile-select"
+                      value={data.profile ?? 'mars_transit'}
+                      onChange={(event) => void handleProfileChange(event.target.value as MissionProfile)}
+                      disabled={profileSaving || DEMO_MODE}
+                    >
+                      <option value="station">Estación orbital</option>
+                      <option value="moon">Luna</option>
+                      <option value="mars_transit">Tránsito a Marte</option>
+                    </select>
+                  </div>
                 </div>
                 <SeverityBadge severity={highestSeverity} />
               </div>
