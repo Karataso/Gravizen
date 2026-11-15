@@ -158,9 +158,11 @@ export default function App() {
   const effectiveCrewId = crewId || crew[0]?.id || 'c1';
   const currentMissionDay = data?.missionDay ?? day;
 
-  const handleCheckInSaved = () => {
-    void refreshPendingCount();
-    void triggerSync();
+  const handleCheckInSaved = async () => {
+    // Esperar la sincronización: si no, el dashboard recarga antes de que el
+    // check-in llegue a la API y el color no cambia.
+    await triggerSync();
+    await refreshPendingCount();
     retry();
   };
 
