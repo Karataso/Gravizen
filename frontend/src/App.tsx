@@ -182,18 +182,6 @@ export default function App() {
             <span className="brand-subtitle">Salud en misión</span>
           </div>
         </div>
-        <div className="top-actions">
-          <span className={`connection ${data?.source === 'demo' ? 'demo' : ''}`}>
-            <i className="indicator" aria-hidden="true" />
-            {crewError || dashboardError
-              ? 'API no disponible'
-              : data?.source === 'demo'
-                ? 'Datos de demostración'
-                : data
-                  ? 'API conectada'
-                  : 'Conectando…'}
-          </span>
-        </div>
       </header>
 
       <nav className="module-nav" aria-label="Módulos de Vitalis">
@@ -227,10 +215,6 @@ export default function App() {
         </div>
 
         <div className="sync-controls">
-          <span className={`sync-status ${isOnline ? 'online' : 'offline'}`} role="status">
-            <span className="sync-dot" aria-hidden="true" />
-            {isOnline ? 'Conectado' : 'Sin conexión'}
-          </span>
           {pendingCount > 0 && (
             <span className="pending-badge" aria-live="polite">
               {pendingCount} pendiente{pendingCount === 1 ? '' : 's'}
