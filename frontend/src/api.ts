@@ -6,6 +6,8 @@ import type {
   DashboardData,
   HazardStatus,
   IndicatorStatus,
+  MissionProfile,
+  MissionReport,
   SeriesDataset,
   SeriesPoint,
   Severity,
@@ -371,6 +373,68 @@ export function getSeriesPoints(dataset: SeriesDataset, indicatorId: string): Se
       baseline: median,
       baselineLow: median !== null && mad !== null ? median - mad : null,
       baselineHigh: median !== null && mad !== null ? median + mad : null,
+    };
+  });
+}
+
+export async function updateCrewProfile(
+  crewId: string,
+  profile: MissionProfile,
+): Promise<MissionProfile> {
+  const response = await fetch(`${API_URL}/api/crew/${encodeURIComponent(crewId)}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify({ profile }),
+  });
+
+  if (!response.ok) {
+    let payload: unknown = null;
+    try {
+      payload = await response.json();
+    } catch {
+      // El estado HTTP basta para explicar el fallo.
+    }
+    throw new ApiError(errorDetail(payload) ?? `La API respondió con estado ${response.status}.`, response.status);
+  }
+
+  const payload: unknown = await response.json();
+  const saved = isRecord(payload) ? readString(payload.profile) : null;
+  return (knownProfile(saved) ?? profile);
+}
+
+function knownProfile(value: string | null): MissionProfile | null {
+  return value === 'station' || value === 'moon' || value === 'mars_transit' ? value : null;
+}
+
+export async function fetchReports(crewId: string, signal?: AbortSignal): Promise<MissionReport[]> {
+  if (DEMO_MODE) return [];
+  const query = new URLSearchParams({ crew_id: crewId });
+  const payload = await getJson(`/api/reports?${query.toString()}`, signal);
+  const raw = isRecord(payload) && Array.isArray(payload.reports) ? payload.reports : null;
+  if (!raw) {
+    throw new ApiError('La respuesta de /api/reports no contiene una lista de reportes.');
+  }
+
+  return raw.map((item, index) => {
+    if (!isRecord(item)) {
+      throw new ApiError(`La API devolvió un reporte inválido en la posición ${index}.`);
+    }
+    const id = readString(item.id);
+    const createdAt = readString(item.created_at);
+    if (!id || !createdAt) {
+      throw new ApiError(`La API devolvió un reporte incompleto en la posición ${index}.`);
+    }
+    const status = readString(item.status);
+    return {
+      id,
+      day: readNumber(item.day) ?? 0,
+      level: requireSeverity(item.level, `El reporte "${id}"`),
+      hazard: readString(item.hazard),
+      message: readString(item.message) ?? '',
+      status: status === 'received' || status === 'responded' ? status : 'transit',
+      etaMinutes: readNumber(item.eta_minutes) ?? 0,
+      createdAt,
+      responseMessage: readString(item.response_message),
     };
   });
 }

@@ -54,7 +54,7 @@ export function TrafficLight({ severity, size = 12, ariaLabel }: { severity: Sev
   );
 }
 
-function SeverityReadout({ severity }: { severity: Severity }) {
+export function SeverityReadout({ severity }: { severity: Severity }) {
   return (
     <span className={`severity-readout severity-${severity}`}>
       <SeverityDot severity={severity} size={10} />

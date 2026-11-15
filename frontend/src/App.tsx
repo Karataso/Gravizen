@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ApiError, DEMO_MODE, fetchCrew, getSeriesPoints, loadDashboard } from './api';
+import { ApiError, DEMO_MODE, fetchCrew, getSeriesPoints, loadDashboard, updateCrewProfile } from './api';
 import {
   AlertPanel,
   CrewSwitcher,
@@ -13,7 +13,7 @@ import { getIndicatorMeta, severityRank } from './domain';
 import { CheckInForm } from './components/CheckInForm';
 import { EarthLinkPanel } from './components/EarthLinkPanel';
 import { useSyncQueue } from './hooks/useSyncQueue';
-import type { CrewMember, DashboardData, Severity } from './types';
+import type { CrewMember, DashboardData, MissionProfile, Severity } from './types';
 
 type AppView = 'dashboard' | 'checkin' | 'earth';
 
@@ -63,6 +63,7 @@ export default function App() {
   const [reloadToken, setReloadToken] = useState(0);
   const [selectedIndicatorId, setSelectedIndicatorId] = useState('sleep_h');
   const [view, setView] = useState<AppView>(initialView);
+  const [profileSaving, setProfileSaving] = useState(false);
   const {
     isOnline,
     pendingCount,
@@ -151,9 +152,22 @@ export default function App() {
     retry();
   };
 
-  const handleReportCreated = () => {
-    void refreshPendingCount();
-    void triggerSync();
+  const handleReportCreated = async () => {
+    await triggerSync();
+    await refreshPendingCount();
+  };
+
+  const handleProfileChange = async (profile: MissionProfile) => {
+    if (DEMO_MODE) return;
+    setProfileSaving(true);
+    try {
+      await updateCrewProfile(effectiveCrewId, profile);
+      retry();
+    } catch (error) {
+      setDashboardError(error);
+    } finally {
+      setProfileSaving(false);
+    }
   };
 
   return (
@@ -198,7 +212,8 @@ export default function App() {
             onClick={() => setView('checkin')}
             aria-pressed={view === 'checkin'}
           >
-            Check-in diario
+            <span className="module-label-full">Check-in diario</span>
+            <span className="module-label-short">Check-in</span>
           </button>
           <button
             type="button"
@@ -206,7 +221,8 @@ export default function App() {
             onClick={() => setView('earth')}
             aria-pressed={view === 'earth'}
           >
-            Enlace con Tierra
+            <span className="module-label-full">Enlace con Tierra</span>
+            <span className="module-label-short">Tierra</span>
           </button>
         </div>
 
@@ -225,12 +241,15 @@ export default function App() {
             className={`sync-btn ${isSyncing ? 'syncing' : ''}`}
             onClick={() => void triggerSync()}
             disabled={!isOnline || isSyncing}
+            aria-label={isSyncing ? 'Sincronizando datos' : 'Sincronizar datos'}
           >
             <span className="sync-icon" aria-hidden="true">
               <span className="sync-arrow" />
               <span className="sync-arrow" />
             </span>
-            {isSyncing ? 'Sincronizando…' : 'Sincronizar'}
+            <span className="sync-label">
+              {isSyncing ? 'Sincronizando…' : 'Sincronizar'}
+            </span>
           </button>
         </div>
       </nav>
@@ -325,6 +344,22 @@ export default function App() {
                       <p className="welcome-subtitle muted">
                         {profileLabel(data.profile)} · Esta lectura compara tu tendencia con tu propia línea base.
                       </p>
+                      <div className="profile-control">
+                        <label htmlFor="profile-select">Perfil de misión</label>
+                        <select
+                          id="profile-select"
+                          value={data.profile ?? 'mars_transit'}
+                          onChange={(event) => void handleProfileChange(event.target.value as MissionProfile)}
+                          disabled={profileSaving || DEMO_MODE}
+                        >
+                          <option value="station">Estación orbital</option>
+                          <option value="moon">Luna</option>
+                          <option value="mars_transit">Tránsito a Marte</option>
+                        </select>
+                        <span className="profile-control-status" aria-live="polite">
+                          {profileSaving ? 'Actualizando…' : ''}
+                        </span>
+                      </div>
                     </div>
                     <SeverityBadge severity={highestSeverity} />
                   </div>
