@@ -33,6 +33,16 @@ uvicorn app.main:app --reload      # http://localhost:8000/docs
 
 La base SQLite se crea y siembra sola al arrancar.
 
+## Correr el motor de evaluación (opcional)
+
+```bash
+pip install -r ml/requirements.txt
+pip install -e ml      # el backend lo usa si el día está cubierto por el dataset
+pytest -q ml/tests
+```
+
+Ver [`ml/README.md`](ml/README.md) para interfaz, métricas y limitaciones.
+
 ## Equipo y roles
 
 Cada carpeta tiene un dueño en [`.github/CODEOWNERS`](.github/CODEOWNERS). Ramas: `feat/<rol>-<tema>`.

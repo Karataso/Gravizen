@@ -11,9 +11,19 @@ Se reemplaza por `ml.evaluate(crew_id, day)` cuando el rol 5 lo entregue.
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.config import get_settings
 from app.models import CheckIn
 from app.schemas.measurement import HazardStatus, IndicatorValue, Level, StatusResponse
 from app.services.data_loader import get_mock_status
+
+# El paquete ml/ es opcional: se activa con `pip install -e ml`.
+try:
+    from ml import evaluate as _ml_evaluate
+except Exception:  # ImportError o dependencias del modelo ausentes
+    _ml_evaluate = None
+
+# Si el dataset no trae línea base para un indicador, el check-in usa esta.
+DEFAULT_BASELINE = {"mood": 4.0}
 
 
 def _sleep_level(value: float, base: float) -> Level:
@@ -68,7 +78,7 @@ def evaluate_crew_day(crew_id: str, day: int, db: Session) -> StatusResponse:
     """
     Evalúa un tripulante en un día. Contrato: `ml.evaluate(crew_id, day)`.
     """
-    status = get_mock_status(crew_id, day)
+    status = _model_status(crew_id, day) or get_mock_status(crew_id, day)
 
     checkin = db.execute(
         select(CheckIn).where(CheckIn.astronaut_id == crew_id, CheckIn.day == day)
@@ -100,7 +110,7 @@ def _apply_checkin(status: StatusResponse, checkin: CheckIn) -> None:
         if ind_id not in by_id:
             by_id[ind_id] = ind
             status.indicators.append(ind)
-        base = ind.baseline if ind.baseline is not None else value
+        base = ind.baseline if ind.baseline is not None else DEFAULT_BASELINE.get(ind_id, value)
         _overlay(ind, value, rule(value, base), ind_id)
 
     for symptom, (level, label) in SYMPTOM_RULES.items():
@@ -124,10 +134,31 @@ def _apply_checkin(status: StatusResponse, checkin: CheckIn) -> None:
             )]
 
 
+def _model_status(crew_id: str, day: int) -> StatusResponse | None:
+    """Status del motor real si `ml/` está instalado y cubre ese día."""
+    if _ml_evaluate is None:
+        return None
+    try:
+        raw = _ml_evaluate(crew_id, day)
+    except Exception:
+        return None
+    if raw is None:
+        return None
+
+    raw.pop("level", None)
+    raw.pop("isolation_forest_score", None)
+    raw.setdefault("profile", get_settings().default_profile)
+    return StatusResponse(**raw)
+
+
 def get_ml_status() -> dict:
     """Health check del motor ML."""
+    if _ml_evaluate is None:
+        return {
+            "status": "mock_bridge",
+            "message": "Paquete ml/ no instalado. Ejecuta: pip install -e ml",
+        }
     return {
-        "status": "mock_bridge",
-        "message": "Usando datos mock + check-in del día. Falta el paquete ml/.",
-        "expected_function": "ml.evaluate(crew_id, day) -> StatusResponse",
+        "status": "ml_engine",
+        "message": "Motor ml/ activo para el rango de días del dataset; fuera de él, mock.",
     }
