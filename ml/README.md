@@ -45,6 +45,7 @@ El recall es el punto débil: 339 días de riesgo se escapan. Declarar como lím
   rol 5 debe extender los datos a 120 días con los escenarios de `PROJECT.md` §6.3.
 - El modelo no se ha validado con astronautas reales.
 - `matplotlib`/`seaborn` son solo para el informe (`plot_evaluation_results`).
+- La imagen de Render no instala `ml/`; el motor corre en local y en CI.
 
 ## Procedencia del dataset
 

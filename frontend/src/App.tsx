@@ -62,6 +62,7 @@ export default function App() {
   const [crew, setCrew] = useState<CrewMember[]>([]);
   const [crewId, setCrewId] = useState('');
   const [day, setDay] = useState(118);
+  const [queryDay, setQueryDay] = useState(118);
   const [data, setData] = useState<DashboardData>();
   const [crewLoading, setCrewLoading] = useState(true);
   const [dashboardLoading, setDashboardLoading] = useState(false);
@@ -82,12 +83,18 @@ export default function App() {
     refreshPendingCount,
   } = useSyncQueue();
 
+  // El slider dispara un evento por paso; esperamos a que el usuario suelte.
+  useEffect(() => {
+    const timer = window.setTimeout(() => setQueryDay(day), 250);
+    return () => window.clearTimeout(timer);
+  }, [day]);
+
   useEffect(() => {
     const controller = new AbortController();
     setCrewLoading(true);
     setCrewError(undefined);
 
-    fetchCrew(day, controller.signal)
+    fetchCrew(queryDay, controller.signal)
       .then((members) => {
         setCrew(members);
         setCrewId((current) => members.some((member) => member.id === current) ? current : members[0].id);
@@ -100,7 +107,7 @@ export default function App() {
       });
 
     return () => controller.abort();
-  }, [day, reloadToken]);
+  }, [queryDay, reloadToken]);
 
   useEffect(() => {
     if (!crewId) return;
@@ -110,7 +117,7 @@ export default function App() {
     setDashboardError(undefined);
     setData(undefined);
 
-    loadDashboard(crewId, day, controller.signal)
+    loadDashboard(crewId, queryDay, controller.signal)
       .then(setData)
       .catch((error: unknown) => {
         if (!isAbortError(error)) setDashboardError(error);
@@ -120,7 +127,7 @@ export default function App() {
       });
 
     return () => controller.abort();
-  }, [crewId, day, reloadToken]);
+  }, [crewId, queryDay, reloadToken]);
 
   const availableIndicatorIds = useMemo(() => {
     if (!data) return [];
@@ -152,7 +159,10 @@ export default function App() {
     ? trendValues.reduce((sum, value) => sum + value, 0) / trendValues.length
     : null;
 
-  const retry = () => setReloadToken((token) => token + 1);
+  const retry = () => {
+    setQueryDay(day);
+    setReloadToken((token) => token + 1);
+  };
   const effectiveCrewId = crewId || crew[0]?.id || 'c1';
   const currentMissionDay = data?.missionDay ?? day;
 

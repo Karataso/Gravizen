@@ -7,38 +7,74 @@
       "id": "exercise_min",
       "value": 30.0,
       "baseline": 100.0,
-      "level": "act",
-      "z": -2.5,
+      "level": "watch",
+      "z": -1.5,
       "why": [
-        "Ejercicio: 30 min contra 100 min de tu plan (30%)"
+        "Ejercicio: 30 min contra 100 min de tu plan"
       ],
       "action": "Replanifica sesiones; revisa si hay dolor o falla equipo.",
-      "escalate": "flight_surgeon",
+      "escalate": "crew",
       "days_to_threshold": null
     },
     {
       "id": "hr_rest",
       "value": 78.0,
       "baseline": 58.0,
-      "level": "act",
-      "z": 2.1,
+      "level": "watch",
+      "z": 1.5,
       "why": [
-        "Pulso en reposo: 78 lpm contra 58 lpm, 20 días"
+        "Pulso en reposo: 78 lpm contra 58 lpm"
       ],
       "action": "Confirma medición; revisa hidratación, sueño y carga.",
-      "escalate": "flight_surgeon",
+      "escalate": "crew",
       "days_to_threshold": null
     }
   ],
   "hazards": [
     {
-      "id": "grav",
-      "level": "act",
-      "anomaly": 0.78,
+      "id": "rad",
+      "level": "normal",
+      "anomaly": null,
       "why": [
-        "Ejercicio bajo y pulso en reposo subiendo desde día 80"
+        "Sin desviaciones este día"
+      ],
+      "days_to_threshold": null
+    },
+    {
+      "id": "iso",
+      "level": "normal",
+      "anomaly": null,
+      "why": [
+        "Sin desviaciones este día"
+      ],
+      "days_to_threshold": null
+    },
+    {
+      "id": "grav",
+      "level": "watch",
+      "anomaly": 0.5,
+      "why": [
+        "Ejercicio bajo y pulso en reposo subiendo desde día 90"
       ],
       "days_to_threshold": 12
+    },
+    {
+      "id": "env",
+      "level": "normal",
+      "anomaly": null,
+      "why": [
+        "Sin desviaciones este día"
+      ],
+      "days_to_threshold": null
+    },
+    {
+      "id": "dist",
+      "level": "normal",
+      "anomaly": null,
+      "why": [
+        "Sin desviaciones este día"
+      ],
+      "days_to_threshold": null
     }
   ]
 }

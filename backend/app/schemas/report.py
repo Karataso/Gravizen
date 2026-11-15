@@ -27,6 +27,8 @@ class ReportCreate(BaseModel):
     level: ReportLevel
     hazard: Optional[str] = Field(default=None, max_length=50)
     message: str = Field(min_length=1, max_length=1000)
+    # UUID del cliente: un reintento con el mismo id devuelve el mismo reporte.
+    client_id: Optional[str] = Field(default=None, max_length=36)
 
 
 class ReportResponse(BaseModel):

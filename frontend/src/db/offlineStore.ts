@@ -98,11 +98,12 @@ export async function syncPendingCheckIns(apiBaseUrl: string): Promise<number> {
 // --- REPORTES A TIERRA ---
 
 export async function saveReportOffline(
-  data: Omit<EarthReport, 'local_id' | 'synced' | 'status'>
+  data: Omit<EarthReport, 'local_id' | 'synced' | 'status' | 'client_id'>
 ): Promise<number> {
   const db = await getDB();
   return db.add('reports', {
     ...data,
+    client_id: crypto.randomUUID(),
     status: 'transit',
     synced: false,
   });
@@ -121,12 +122,18 @@ export async function syncPendingReports(apiBaseUrl: string): Promise<number> {
 
   for (const item of pending) {
     try {
-      // El reporte de la API solo lleva day, level, hazard y message.
+      // Elementos guardados antes de existir client_id reciben uno y se persiste.
+      if (!item.client_id) {
+        item.client_id = crypto.randomUUID();
+        await db.put('reports', item);
+      }
+      const clientId = item.client_id;
       const payload = {
         day: item.day,
         level: item.level,
         hazard: item.hazard,
         message: item.message,
+        client_id: clientId,
       };
       const res = await fetch(`${apiBaseUrl}/api/crew/${item.crew_id}/reports`, {
         method: 'POST',

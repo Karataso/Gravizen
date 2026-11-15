@@ -40,6 +40,7 @@ El frontend normaliza y valida en tiempo de ejecución las respuestas `snake_cas
 
 ```bash
 npm run lint
+npm test
 npm run typecheck
 npm run build
 ```

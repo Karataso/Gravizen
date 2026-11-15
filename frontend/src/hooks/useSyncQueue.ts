@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   syncPendingCheckIns,
   syncPendingReports,
@@ -12,6 +12,7 @@ export function useSyncQueue() {
   const [isOnline, setIsOnline] = useState<boolean>(navigator.onLine);
   const [pendingCount, setPendingCount] = useState<number>(0);
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
+  const syncingRef = useRef(false);
 
   const refreshPendingCount = useCallback(async () => {
     const [checkins, reports] = await Promise.all([
@@ -25,13 +26,15 @@ export function useSyncQueue() {
   }, []);
 
   const triggerSync = useCallback(async () => {
-    if (!navigator.onLine) return;
+    if (!navigator.onLine || syncingRef.current) return;
+    syncingRef.current = true;
     setIsSyncing(true);
     try {
       await syncPendingCheckIns(API_URL);
       await syncPendingReports(API_URL);
     } finally {
       await refreshPendingCount();
+      syncingRef.current = false;
       setIsSyncing(false);
     }
   }, [refreshPendingCount]);

@@ -28,15 +28,12 @@ class Astronaut(Base):
     mission_day: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     profile: Mapped[str] = mapped_column(String(50), default="mars_transit", nullable=False)
 
-    # Relaciones
-    measurements: Mapped[list["Measurement"]] = relationship(
-        back_populates="astronaut", cascade="all, delete-orphan", lazy="selectin"
-    )
+    # Relaciones (carga perezosa: ninguna ruta serializa estas listas)
     checkins: Mapped[list["CheckIn"]] = relationship(
-        back_populates="astronaut", cascade="all, delete-orphan", lazy="selectin"
+        back_populates="astronaut", cascade="all, delete-orphan"
     )
     reports: Mapped[list["Report"]] = relationship(
-        back_populates="astronaut", cascade="all, delete-orphan", lazy="selectin"
+        back_populates="astronaut", cascade="all, delete-orphan"
     )
 
     def __repr__(self) -> str:

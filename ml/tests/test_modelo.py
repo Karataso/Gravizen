@@ -40,12 +40,24 @@ def test_evaluate_outside_dataset_returns_none():
     assert modelo.evaluate("c1", 0) is None
 
 
+def test_baseline_uses_first_days_only():
+    """La línea base no sigue la tendencia: son los días 1-13, no todo el historial."""
+    status = modelo.evaluate("c2", 30)
+    pulse = next(i for i in status["indicators"] if i["id"] == "hr_rest")
+
+    person = modelo.load_and_normalize_dataset()
+    early = person[(person["crew_id"] == "ASTRO_02") & (person["day"] <= 13)]
+    median, _ = modelo.calculate_mad(early["pulse"])
+
+    assert pulse["baseline"] == round(median, 2)
+
+
 def test_isolation_forest_does_not_use_future_days():
     """El puntaje del día 10 se calcula solo con datos hasta el día 10."""
     full = modelo.load_and_normalize_dataset()
     person = full[full["crew_id"] == "ASTRO_01"].sort_values("day")
     model = modelo.load_isolation_forest(full)
 
-    early_flags, _ = modelo.score_with_isolation_forest(person[person["day"] <= 10], model)
+    early_flags = modelo.score_with_isolation_forest(person[person["day"] <= 10], model)
     assert len(early_flags) == 10
     assert not np.isnan(early_flags).any()

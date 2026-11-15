@@ -2,18 +2,23 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Response
 from sqlalchemy.orm import Session
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from datetime import datetime, timezone
 
 from app.database import get_db
 from app.models import Astronaut, CheckIn
 from app.schemas.checkin import CheckInCreate, CheckInResponse
-from app.schemas.measurement import StatusResponse
 from app.services.ml_bridge import evaluate_crew_day
-from app.config import get_settings
 
 
 router = APIRouter(prefix="/api", tags=["checkins"])
-settings = get_settings()
+
+
+def _apply(payload: CheckInCreate, checkin: CheckIn, now: datetime) -> None:
+    for field, value in payload.model_dump(exclude_unset=True).items():
+        if field != "client_id":  # no tocar client_id
+            setattr(checkin, field, value)
+    checkin.updated_at = now
 
 
 @router.post(
@@ -21,7 +26,7 @@ settings = get_settings()
     response_model=CheckInResponse,
     summary="Crear o actualizar check-in del día (idempotente)"
 )
-async def create_checkin(
+def create_checkin(
     crew_id: str,
     payload: CheckInCreate,
     response: Response,
@@ -33,7 +38,6 @@ async def create_checkin(
     - Si existe: actualiza (200)
     Devuelve el status actualizado tras procesar el check-in.
     """
-    # Verificar tripulante
     astronaut = db.execute(
         select(Astronaut).where(Astronaut.id == crew_id)
     ).scalar_one_or_none()
@@ -41,12 +45,6 @@ async def create_checkin(
     if not astronaut:
         raise HTTPException(status_code=404, detail=f"Tripulante {crew_id} no encontrado")
 
-    # Validar día coherente
-    if payload.day != astronaut.mission_day:
-        # Permitimos check-ins de días pasados pero avisamos
-        pass
-
-    # Buscar check-in existente (idempotencia)
     existing = db.execute(
         select(CheckIn).where(
             CheckIn.astronaut_id == crew_id,
@@ -58,15 +56,10 @@ async def create_checkin(
     created = False
 
     if existing:
-        # Actualizar
-        for field, value in payload.model_dump(exclude_unset=True).items():
-            if field not in ("client_id",):  # no tocar client_id
-                setattr(existing, field, value)
-        existing.updated_at = now
+        _apply(payload, existing, now)
         checkin = existing
         response.status_code = status.HTTP_200_OK
     else:
-        # Crear nuevo
         checkin = CheckIn(
             astronaut_id=crew_id,
             day=payload.day,
@@ -78,7 +71,22 @@ async def create_checkin(
         created = True
         response.status_code = status.HTTP_201_CREATED
 
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        # Dos check-ins del mismo día llegaron a la vez: gana uno, el otro actualiza.
+        db.rollback()
+        checkin = db.execute(
+            select(CheckIn).where(
+                CheckIn.astronaut_id == crew_id,
+                CheckIn.day == payload.day
+            )
+        ).scalar_one()
+        _apply(payload, checkin, now)
+        db.commit()
+        created = False
+        response.status_code = status.HTTP_200_OK
+
     db.refresh(checkin)
 
     # Status recalculado con el check-in recién guardado

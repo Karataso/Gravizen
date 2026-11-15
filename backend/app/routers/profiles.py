@@ -1,8 +1,6 @@
 """Router de perfiles de misión: GET /api/profiles."""
-from fastapi import APIRouter, Depends
-from sqlalchemy.orm import Session
+from fastapi import APIRouter, HTTPException
 
-from app.database import get_db
 from app.schemas.profile import ProfileResponse, ProfileListResponse
 from app.config import get_settings
 
@@ -41,9 +39,7 @@ PROFILES = [
 
 
 @router.get("/profiles", response_model=ProfileListResponse, summary="Perfiles de misión disponibles")
-async def list_profiles(
-    db: Session = Depends(get_db),
-):
+def list_profiles():
     """Devuelve perfiles disponibles y el actual."""
     return ProfileListResponse(
         profiles=PROFILES,
@@ -52,10 +48,9 @@ async def list_profiles(
 
 
 @router.get("/profiles/{profile_id}", response_model=ProfileResponse, summary="Detalle de un perfil")
-async def get_profile(profile_id: str):
+def get_profile(profile_id: str):
     """Detalle de un perfil específico."""
     for p in PROFILES:
         if p.id == profile_id:
             return p
-    from fastapi import HTTPException
     raise HTTPException(status_code=404, detail=f"Perfil {profile_id} no encontrado")

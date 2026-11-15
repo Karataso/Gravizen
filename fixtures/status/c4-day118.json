@@ -45,6 +45,33 @@
   ],
   "hazards": [
     {
+      "id": "rad",
+      "level": "normal",
+      "anomaly": null,
+      "why": [
+        "Sin desviaciones este día"
+      ],
+      "days_to_threshold": null
+    },
+    {
+      "id": "iso",
+      "level": "normal",
+      "anomaly": null,
+      "why": [
+        "Sin desviaciones este día"
+      ],
+      "days_to_threshold": null
+    },
+    {
+      "id": "grav",
+      "level": "normal",
+      "anomaly": null,
+      "why": [
+        "Sin desviaciones este día"
+      ],
+      "days_to_threshold": null
+    },
+    {
       "id": "env",
       "level": "act",
       "anomaly": 0.85,
@@ -52,6 +79,15 @@
         "CO₂ sobre 3 mmHg, cefalea, sueño peor"
       ],
       "days_to_threshold": 3
+    },
+    {
+      "id": "dist",
+      "level": "normal",
+      "anomaly": null,
+      "why": [
+        "Sin desviaciones este día"
+      ],
+      "days_to_threshold": null
     }
   ]
 }

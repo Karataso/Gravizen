@@ -1,25 +1,27 @@
 """Configuración de base de datos SQLAlchemy."""
-from contextlib import contextmanager
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import DeclarativeBase, sessionmaker, Session
-from sqlalchemy.pool import StaticPool
+from sqlalchemy.pool import NullPool, StaticPool
 
 from app.config import get_settings
 
 
 settings = get_settings()
 
-# Engine SQLite con configuración para desarrollo
-# check_same_thread=False necesario para FastAPI + SQLite en desarrollo
+_is_sqlite = "sqlite" in settings.database_url
+_is_memory = ":memory:" in settings.database_url
+
+# StaticPool solo para la BD en memoria de tests; un archivo recibe una
+# conexión por petición para no compartirla entre hilos.
 engine = create_engine(
     settings.database_url,
-    connect_args={"check_same_thread": False} if "sqlite" in settings.database_url else {},
-    poolclass=StaticPool if "sqlite" in settings.database_url else None,
+    connect_args={"check_same_thread": False} if _is_sqlite else {},
+    poolclass=StaticPool if _is_memory else (NullPool if _is_sqlite else None),
     echo=settings.debug,
 )
 
 # Habilitar FK en SQLite
-if "sqlite" in settings.database_url:
+if _is_sqlite:
 
     @event.listens_for(engine, "connect")
     def set_sqlite_pragma(dbapi_connection, connection_record):
@@ -49,23 +51,9 @@ def get_db() -> Session:
         db.close()
 
 
-@contextmanager
-def get_db_context() -> Session:
-    """Context manager para uso fuera de request (ej. scripts, startup)."""
-    db = SessionLocal()
-    try:
-        yield db
-        db.commit()
-    except Exception:
-        db.rollback()
-        raise
-    finally:
-        db.close()
-
-
 def init_db() -> None:
     """Crear todas las tablas. Se llama al arrancar la app."""
     # Importar modelos para que se registren en Base.metadata
-    from app.models import astronaut, measurement, checkin, report  # noqa: F401
+    from app.models import astronaut, checkin, report  # noqa: F401
 
     Base.metadata.create_all(bind=engine)

@@ -12,9 +12,9 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
-from app.models import CheckIn
+from app.models import Astronaut, CheckIn
 from app.schemas.measurement import HazardStatus, IndicatorValue, Level, StatusResponse
-from app.services.data_loader import get_mock_status
+from app.services.data_loader import get_crew_baseline, get_mock_status
 
 # El paquete ml/ es opcional: se activa con `pip install -e ml`.
 try:
@@ -23,7 +23,16 @@ except Exception:  # ImportError o dependencias del modelo ausentes
     _ml_evaluate = None
 
 # Si el dataset no trae línea base para un indicador, el check-in usa esta.
-DEFAULT_BASELINE = {"mood": 4.0}
+DEFAULT_BASELINE = {"sleep_h": 7.0, "mood": 4.0, "stress": 2.0}
+
+# Los ids del contrato no coinciden con las claves de la línea base.
+BASELINE_KEYS = {
+    "sleep_h": "sleep",
+    "hr_rest": "hr",
+    "mood": "mood",
+    "stress": "stress",
+    "exercise_min": "exercise",
+}
 
 
 def _sleep_level(value: float, base: float) -> Level:
@@ -68,6 +77,7 @@ SYMPTOM_RULES = {
 def _overlay(ind: IndicatorValue, value: float, level: Level, label: str) -> IndicatorValue:
     ind.value = value
     ind.level = level
+    ind.z = None  # la z del mock ya no describe este valor
     if level != Level.NORMAL:
         base = f" contra {ind.baseline:g} de tu línea base" if ind.baseline is not None else ""
         ind.why = [f"{label}: {value:g}{base}"]
@@ -86,6 +96,11 @@ def evaluate_crew_day(crew_id: str, day: int, db: Session) -> StatusResponse:
     if checkin is not None:
         _apply_checkin(status, checkin)
 
+    # El perfil del tripulante vive en la BD; el mock y el motor no lo conocen.
+    astronaut = db.get(Astronaut, crew_id)
+    if astronaut is not None:
+        status.profile = astronaut.profile
+
     # El dashboard muestra siempre los 5 peligros de NASA HRP (§3.1).
     present = {h.id: h for h in status.hazards}
     status.hazards = [
@@ -98,6 +113,7 @@ def evaluate_crew_day(crew_id: str, day: int, db: Session) -> StatusResponse:
 
 def _apply_checkin(status: StatusResponse, checkin: CheckIn) -> None:
     by_id = {ind.id: ind for ind in status.indicators}
+    crew_base = get_crew_baseline(status.crew_id)
 
     for ind_id, value, rule in (
         ("sleep_h", checkin.sleep_h, _sleep_level),
@@ -110,7 +126,10 @@ def _apply_checkin(status: StatusResponse, checkin: CheckIn) -> None:
         if ind_id not in by_id:
             by_id[ind_id] = ind
             status.indicators.append(ind)
-        base = ind.baseline if ind.baseline is not None else DEFAULT_BASELINE.get(ind_id, value)
+        base = ind.baseline
+        if base is None:
+            base = crew_base.get(BASELINE_KEYS[ind_id], DEFAULT_BASELINE.get(ind_id, value))
+            ind.baseline = base
         _overlay(ind, value, rule(value, base), ind_id)
 
     for symptom, (level, label) in SYMPTOM_RULES.items():

@@ -24,11 +24,6 @@ from app.schemas.profile import (
     ProfileResponse,
     ProfileListResponse,
 )
-from app.schemas.sim import (
-    StormRequest,
-    StormResponse,
-)
-
 __all__ = [
     # Crew
     "AstronautPublic",
@@ -50,7 +45,4 @@ __all__ = [
     # Profile
     "ProfileResponse",
     "ProfileListResponse",
-    # Sim
-    "StormRequest",
-    "StormResponse",
 ]

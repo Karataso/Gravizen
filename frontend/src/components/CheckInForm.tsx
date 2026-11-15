@@ -92,7 +92,7 @@ export const CheckInForm: React.FC<CheckInFormProps> = ({
         sleep_h: parsedSleep,
         mood,
         stress,
-        note: notes.trim() || undefined,
+        note: notes.trim(),
         recorded_at: now,
       });
 
@@ -285,12 +285,13 @@ export const CheckInForm: React.FC<CheckInFormProps> = ({
               </div>
             </div>
             <p id="emergency-description" className="emergency-text">
-              Hemos activado una alerta prioritaria con el médico de vuelo y el comandante de a bordo.
+              Tu check-in quedó registrado con prioridad de emergencia. El reporte se envía a
+              Tierra en cuanto haya enlace.
             </p>
             <ul className="emergency-guidance">
-              <li>Contacta de inmediato al oficial médico de la tripulación.</li>
+              <li>Contacta ahora al oficial médico de la tripulación.</li>
               <li>Mantente acompañado en el módulo común; no te aísles.</li>
-              <li>El canal privado con psicología de tierra ya fue marcado como urgente.</li>
+              <li>El canal privado con psicología de tierra se marcará como urgente al enviarse.</li>
             </ul>
             <button
               ref={emergencyButtonRef}

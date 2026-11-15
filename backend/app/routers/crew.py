@@ -2,23 +2,18 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import select
-from typing import Optional
 
 from app.database import get_db
-from app.models import Astronaut, Measurement
+from app.models import Astronaut
 from app.schemas.crew import (
     AstronautPublic,
     CrewListResponse,
     CrewProfileResponse,
     CrewProfileUpdate,
-    CrewRole,
 )
 from app.schemas.measurement import (
     StatusResponse,
     SeriesResponse,
-    IndicatorValue,
-    IndicatorBaseline,
-    HazardStatus,
     Level,
 )
 from app.services.data_loader import get_mock_crew, get_mock_series
@@ -31,7 +26,7 @@ settings = get_settings()
 
 
 @router.get("/crew", response_model=CrewListResponse, summary="Lista de tripulantes")
-async def list_crew(
+def list_crew(
     db: Session = Depends(get_db),
     day: int = Query(0, ge=0, description="Día de misión para filtrar nivel"),
 ):
@@ -76,7 +71,7 @@ async def list_crew(
     response_model=CrewProfileResponse,
     summary="Cambiar el perfil de misión (retraso de comunicación)",
 )
-async def update_crew_profile(
+def update_crew_profile(
     crew_id: str,
     payload: CrewProfileUpdate,
     db: Session = Depends(get_db),
@@ -106,7 +101,7 @@ async def update_crew_profile(
     response_model=StatusResponse,
     summary="Estado de indicadores y peligros de un tripulante en un día"
 )
-async def get_crew_status(
+def get_crew_status(
     crew_id: str,
     day: int = Query(..., ge=0, description="Día de misión"),
     db: Session = Depends(get_db),
@@ -132,7 +127,7 @@ async def get_crew_status(
     response_model=SeriesResponse,
     summary="Serie temporal de indicadores + línea base"
 )
-async def get_crew_series(
+def get_crew_series(
     crew_id: str,
     end_day: int = Query(..., ge=0, description="Día final de la serie"),
     days: int = Query(30, ge=1, le=120, description="Cuántos días hacia atrás"),
@@ -149,6 +144,5 @@ async def get_crew_series(
     if not astronaut:
         raise HTTPException(status_code=404, detail=f"Tripulante {crew_id} no encontrado")
 
-    # TODO: Leer de BD real (Measurement)
-    # Por ahora: datos mock
+    # Por ahora: datos mock (el motor ml/ cubre los primeros 30 días).
     return get_mock_series(crew_id, end_day, days)

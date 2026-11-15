@@ -64,6 +64,12 @@ jobs:
       - run: npm ci
         working-directory: frontend
         if: hashFiles('frontend/package.json') != ''
+      - run: npm run lint
+        working-directory: frontend
+        if: hashFiles('frontend/package.json') != ''
+      - run: npm test
+        working-directory: frontend
+        if: hashFiles('frontend/package.json') != ''
       - run: npm run build
         working-directory: frontend
         if: hashFiles('frontend/package.json') != ''

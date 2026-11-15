@@ -24,6 +24,15 @@ def test_self_harm_is_emergency(client: TestClient):
     assert hazards["iso"]["level"] == "emergency"
 
 
+def test_checkin_uses_crew_baseline(client: TestClient):
+    """Estrés 5/5 de Iker se compara con su base (2), no consigo mismo."""
+    status = client.post("/api/crew/c2/checkins", json={"day": 118, "stress": 5}).json()["status"]
+
+    by_id = {i["id"]: i for i in status["indicators"]}
+    assert by_id["stress"]["baseline"] == 2
+    assert by_id["stress"]["level"] == "act"
+
+
 def test_checkin_rejects_unknown_fields(client: TestClient):
     """Un nombre fuera del contrato falla con 422, no se ignora en silencio."""
     response = client.post("/api/crew/c1/checkins", json={"day": 118, "sleep_hours": 5})
@@ -31,9 +40,10 @@ def test_checkin_rejects_unknown_fields(client: TestClient):
 
 
 def test_profile_change_sets_report_delay(client: TestClient):
-    """Perfil estación -> reporte nuevo con eta 0."""
+    """Perfil estación -> status y reporte nuevo con el perfil guardado."""
     try:
         assert client.patch("/api/crew/c1", json={"profile": "station"}).status_code == 200
+        assert client.get("/api/crew/c1/status?day=118").json()["profile"] == "station"
 
         report = client.post(
             "/api/crew/c1/reports",

@@ -8,7 +8,7 @@
       "value": 7.1,
       "baseline": 7.2,
       "level": "normal",
-      "z": 0.1,
+      "z": 0.0,
       "why": [],
       "action": "",
       "escalate": "",
@@ -19,7 +19,7 @@
       "value": 66.0,
       "baseline": 65.0,
       "level": "normal",
-      "z": 0.2,
+      "z": 0.0,
       "why": [],
       "action": "",
       "escalate": "",
@@ -63,12 +63,58 @@
       "value": 2.2,
       "baseline": 2.5,
       "level": "normal",
-      "z": -0.5,
+      "z": 0.0,
       "why": [],
       "action": "",
       "escalate": "",
       "days_to_threshold": null
     }
   ],
-  "hazards": []
+  "hazards": [
+    {
+      "id": "rad",
+      "level": "normal",
+      "anomaly": null,
+      "why": [
+        "Sin desviaciones este día"
+      ],
+      "days_to_threshold": null
+    },
+    {
+      "id": "iso",
+      "level": "normal",
+      "anomaly": null,
+      "why": [
+        "Sin desviaciones este día"
+      ],
+      "days_to_threshold": null
+    },
+    {
+      "id": "grav",
+      "level": "normal",
+      "anomaly": null,
+      "why": [
+        "Sin desviaciones este día"
+      ],
+      "days_to_threshold": null
+    },
+    {
+      "id": "env",
+      "level": "normal",
+      "anomaly": null,
+      "why": [
+        "Sin desviaciones este día"
+      ],
+      "days_to_threshold": null
+    },
+    {
+      "id": "dist",
+      "level": "normal",
+      "anomaly": null,
+      "why": [
+        "Sin desviaciones este día"
+      ],
+      "days_to_threshold": null
+    }
+  ]
 }

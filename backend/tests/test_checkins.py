@@ -1,5 +1,8 @@
 """Tests de endpoints de check-in."""
 from fastapi.testclient import TestClient
+from sqlalchemy import select
+
+from app.models import CheckIn
 
 
 def test_create_checkin(client: TestClient):
@@ -65,6 +68,18 @@ def test_create_checkin_validation(client: TestClient):
     payload = {"day": 118, "bp_sys": 120, "bp_dia": 130}
     response = client.post("/api/crew/c1/checkins", json=payload)
     assert response.status_code == 422
+
+
+def test_checkin_can_clear_note(client: TestClient, db_session):
+    """Una nota vacía borra la anterior; no se queda pegada."""
+    client.post("/api/crew/c1/checkins", json={"day": 118, "note": "dolor de cabeza"})
+    client.post("/api/crew/c1/checkins", json={"day": 118, "note": ""})
+
+    db_session.expire_all()
+    row = db_session.execute(
+        select(CheckIn).where(CheckIn.astronaut_id == "c1", CheckIn.day == 118)
+    ).scalar_one()
+    assert row.note == ""
 
 
 def test_create_checkin_full_payload(client: TestClient):

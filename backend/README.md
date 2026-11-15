@@ -19,7 +19,6 @@ backend/
 │   ├── database.py          # Engine, session, Base, init_db
 │   ├── models/              # SQLAlchemy models
 │   │   ├── astronaut.py
-│   │   ├── measurement.py
 │   │   ├── checkin.py
 │   │   └── report.py
 │   ├── schemas/             # Pydantic models (API contract)
@@ -27,19 +26,16 @@ backend/
 │   │   ├── measurement.py
 │   │   ├── checkin.py
 │   │   ├── report.py
-│   │   ├── profile.py
-│   │   └── sim.py
+│   │   └── profile.py
 │   ├── routers/             # API endpoints
 │   │   ├── health.py        # GET /api/health
 │   │   ├── crew.py          # GET /api/crew, /status, /series
 │   │   ├── checkins.py      # POST /api/crew/{id}/checkins
 │   │   ├── reports.py       # POST/GET /api/reports
-│   │   ├── profiles.py      # GET /api/profiles
-│   │   └── sim.py           # POST /api/sim/storm
+│   │   └── profiles.py      # GET /api/profiles
 │   └── services/            # Business logic
 │       ├── data_loader.py   # Mock data (fase 1-2)
-│       ├── report_states.py # Transit → received → responded
-│       └── ml_bridge.py     # Puente a paquete ml/
+│       └── ml_bridge.py     # Puente a paquete ml/ (transit → received → responded)
 ├── tests/                   # pytest tests
 ├── requirements.txt
 ├── Dockerfile
@@ -64,7 +60,6 @@ Endpoints principales:
 | POST | `/api/crew/{id}/reports` | Reporte a médico de vuelo |
 | GET | `/api/reports` | Listar reportes con estado |
 | GET | `/api/profiles` | Perfiles de misión |
-| POST | `/api/sim/storm` | Inyectar tormenta solar (demo) |
 
 ## Desarrollo local
 

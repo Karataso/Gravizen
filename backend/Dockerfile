@@ -10,12 +10,6 @@ ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 
-# Instalar dependencias del sistema (para psycopg2 si usas PostgreSQL)
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    gcc \
-    libpq-dev \
-    && rm -rf /var/lib/apt/lists/*
-
 # Directorio de trabajo
 WORKDIR /app
 
@@ -26,9 +20,8 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
-# Instalar paquete ML en modo editable (desde el repo)
-# COPY ../ml /app/ml
-# RUN pip install --no-cache-dir -e /app/ml
+# ml/ no se instala: el deploy usa el mock (el demo vive en el día 118,
+# fuera del dataset) y la imagen evita pandas/sklearn.
 
 # Copiar código de la aplicación
 COPY ./app /app/app

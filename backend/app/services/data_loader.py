@@ -1,9 +1,8 @@
 """
-Datos mock para desbloquear al frontend (Fase 1-2).
+Datos mock para el demo (Fase 1-2).
 Según PROJECT.md §11.4: "FastAPI + CORS + rutas devolviendo fixtures".
-Esto se reemplaza por datos reales de BD + motor ML en fases posteriores.
+El motor `ml/` los reemplaza en los días que cubre el dataset.
 """
-from typing import Optional
 from app.schemas.measurement import (
     StatusResponse,
     SeriesResponse,
@@ -43,10 +42,29 @@ MOCK_CREW = [
     },
 ]
 
+# Línea base personal (única fuente para status, series y check-in).
+CREW_BASELINES = {
+    "c1": {"sleep": 7.0, "hr": 62, "mood": 4, "stress": 2, "exercise": 90},
+    "c2": {"sleep": 6.5, "hr": 58, "mood": 3, "stress": 2, "exercise": 100},
+    "c3": {"sleep": 7.2, "hr": 65, "mood": 4, "stress": 1, "exercise": 95},
+    "c4": {"sleep": 6.8, "hr": 60, "mood": 3, "stress": 2, "exercise": 85},
+}
+
+
+def get_crew_baseline(crew_id: str) -> dict:
+    return CREW_BASELINES.get(crew_id, CREW_BASELINES["c3"])
+
 
 def get_mock_crew(day: int) -> list[dict]:
     """Devuelve tripulación base para el día dado."""
     return MOCK_CREW
+
+
+def _normal(indicator_id: str, value: float, baseline: float) -> IndicatorValue:
+    return IndicatorValue(
+        id=indicator_id, value=value, baseline=baseline, level=Level.NORMAL,
+        z=0, why=[], action="", escalate="",
+    )
 
 
 def get_mock_status(crew_id: str, day: int) -> StatusResponse:
@@ -59,59 +77,42 @@ def get_mock_status(crew_id: str, day: int) -> StatusResponse:
         raise ValueError(f"Tripulante {crew_id} no encontrado")
 
     scenario = member["scenario"]
-    name = member["name"]
-
-    # Baseline personal (fijo por persona)
-    baselines = {
-        "c1": {"sleep": 7.0, "hr": 62, "mood": 4, "stress": 2, "exercise": 90},
-        "c2": {"sleep": 6.5, "hr": 58, "mood": 3, "stress": 2, "exercise": 100},
-        "c3": {"sleep": 7.2, "hr": 65, "mood": 4, "stress": 1, "exercise": 95},
-        "c4": {"sleep": 6.8, "hr": 60, "mood": 3, "stress": 2, "exercise": 85},
-    }
-    bl = baselines[crew_id]
-
+    bl = get_crew_baseline(crew_id)
     indicators = []
     hazards = []
 
     # === INDICADORES SEGÚN ESCENARIO Y DÍA ===
     if scenario == "isolation":  # Nova - aislamiento desde día 96
         if day >= 118:  # Demo day
-            # Sueño: 5.1h vs 7.0 base, 4 noches
             indicators.append(IndicatorValue(
                 id="sleep_h", value=5.1, baseline=bl["sleep"], level=Level.ACT, z=-2.4,
                 why=["Sueño: 5,1 h contra 7,0 h de tu base, 4 noches seguidas"],
                 action="Revisa luz y horario; sin cafeína después de las 14:00.",
                 escalate="flight_surgeon",
             ))
-            # Ánimo: 2/5 vs 4 base, 3 días
             indicators.append(IndicatorValue(
                 id="mood", value=2, baseline=bl["mood"], level=Level.ACT, z=-2.0,
                 why=["Ánimo: 2/5 contra 4 de tu base, 3 días seguidos"],
                 action="Contacto social estructurado (comida en grupo, llamada a familia).",
                 escalate="flight_surgeon",
             ))
-            # Estrés: 4/5 vs 2 base
             indicators.append(IndicatorValue(
                 id="stress", value=4, baseline=bl["stress"], level=Level.WATCH, z=2.0,
                 why=["Estrés: 4/5 contra 2 de tu base"],
                 action="Pausas obligatorias, técnicas de respiración.",
                 escalate="crew",
             ))
-            # Pulso normal
             indicators.append(IndicatorValue(
                 id="hr_rest", value=64, baseline=bl["hr"], level=Level.NORMAL, z=0.5,
                 why=["Pulso en reposo: 64 lpm contra 62 lpm"],
                 action="Mantén hidratación y rutina.",
                 escalate="crew",
             ))
-
-            # Peligro: aislamiento (iso) - convergencia sueño+ánimo+estrés
             hazards.append(HazardStatus(
                 id="iso", level=Level.ACT, anomaly=0.91,
                 why=["Sueño, ánimo y estrés empeorando juntos desde el día 108"],
                 days_to_threshold=6,
             ))
-
         elif day >= 96:
             # Inicio gradual
             sleep_val = max(bl["sleep"] - 0.1 * (day - 96), 5.0)
@@ -124,29 +125,51 @@ def get_mock_status(crew_id: str, day: int) -> StatusResponse:
                 level=Level.WATCH if mood_val <= bl["mood"] - 1 else Level.NORMAL, z=-1.0,
                 why=[f"Ánimo: {int(mood_val)}/5 contra {bl['mood']} de tu base"],
                 action="Contacto social.", escalate="crew"))
+            if day >= 108:
+                hazards.append(HazardStatus(
+                    id="iso", level=Level.WATCH, anomaly=0.5,
+                    why=["Sueño, ánimo y estrés empeorando juntos desde el día 108"],
+                    days_to_threshold=10,
+                ))
+        else:
+            indicators.extend([
+                _normal("sleep_h", bl["sleep"], bl["sleep"]),
+                _normal("hr_rest", bl["hr"], bl["hr"]),
+                _normal("mood", bl["mood"], bl["mood"]),
+                _normal("stress", bl["stress"], bl["stress"]),
+            ])
 
     elif scenario == "deconditioning":  # Iker - pérdida condición desde día 60
-        if day >= 118:
-            # Ejercicio bajo
+        if day >= 60:
+            progress = min((day - 60) / 45, 1.0)
+            exercise = round(bl["exercise"] * (1 - 0.7 * progress), 1)
+            hr = round(bl["hr"] + 20 * progress, 1)
+            level = Level.WATCH if day >= 90 else Level.NORMAL
             indicators.append(IndicatorValue(
-                id="exercise_min", value=30, baseline=bl["exercise"], level=Level.ACT, z=-2.5,
-                why=["Ejercicio: 30 min contra 100 min de tu plan (30%)"],
-                action="Replanifica sesiones; revisa si hay dolor o falla equipo.",
-                escalate="flight_surgeon",
+                id="exercise_min", value=exercise, baseline=bl["exercise"], level=level,
+                z=-1.5 if level != Level.NORMAL else 0,
+                why=[f"Ejercicio: {exercise:g} min contra {bl['exercise']} min de tu plan"] if level != Level.NORMAL else [],
+                action="Replanifica sesiones; revisa si hay dolor o falla equipo." if level != Level.NORMAL else "",
+                escalate="crew" if level != Level.NORMAL else "",
             ))
-            # Pulso subido
             indicators.append(IndicatorValue(
-                id="hr_rest", value=78, baseline=bl["hr"], level=Level.ACT, z=2.1,
-                why=["Pulso en reposo: 78 lpm contra 58 lpm, 20 días"],
-                action="Confirma medición; revisa hidratación, sueño y carga.",
-                escalate="flight_surgeon",
+                id="hr_rest", value=hr, baseline=bl["hr"], level=level,
+                z=1.5 if level != Level.NORMAL else 0,
+                why=[f"Pulso en reposo: {hr:g} lpm contra {bl['hr']} lpm"] if level != Level.NORMAL else [],
+                action="Confirma medición; revisa hidratación, sueño y carga." if level != Level.NORMAL else "",
+                escalate="crew" if level != Level.NORMAL else "",
             ))
-
-            hazards.append(HazardStatus(
-                id="grav", level=Level.ACT, anomaly=0.78,
-                why=["Ejercicio bajo y pulso en reposo subiendo desde día 80"],
-                days_to_threshold=12,
-            ))
+            if day >= 90:
+                hazards.append(HazardStatus(
+                    id="grav", level=Level.WATCH, anomaly=0.5,
+                    why=["Ejercicio bajo y pulso en reposo subiendo desde día 90"],
+                    days_to_threshold=12,
+                ))
+        else:
+            indicators.extend([
+                _normal("exercise_min", bl["exercise"], bl["exercise"]),
+                _normal("hr_rest", bl["hr"], bl["hr"]),
+            ])
 
     elif scenario == "co2_high":  # Sol - CO₂ alto desde día 80
         if day >= 118:
@@ -170,23 +193,40 @@ def get_mock_status(crew_id: str, day: int) -> StatusResponse:
                 why=["CO₂ sobre 3 mmHg, cefalea, sueño peor"],
                 days_to_threshold=3,
             ))
+        elif day >= 80:
+            progress = min((day - 80) / 10, 1.0)
+            co2 = round(2.5 + 0.7 * progress, 1)
+            sleep_val = round(bl["sleep"] - 1.0 * progress, 1)
+            indicators.append(IndicatorValue(
+                id="co2_mmhg", value=co2, baseline=2.5, level=Level.WATCH, z=1.5,
+                why=[f"CO₂: {co2:g} mmHg, subiendo desde el día 80"],
+                action="Verifica el sensor, mejora la ventilación y repite la lectura.",
+                escalate="crew",
+            ))
+            indicators.append(IndicatorValue(
+                id="sleep_h", value=sleep_val, baseline=bl["sleep"], level=Level.WATCH, z=-1.5,
+                why=[f"Sueño: {sleep_val:g} h contra {bl['sleep']} h de tu base"],
+                action="Revisa ambiente de dormir.", escalate="crew"))
+            hazards.append(HazardStatus(
+                id="env", level=Level.WATCH, anomaly=0.55,
+                why=["CO₂ y sueño empeorando desde el día 80"],
+                days_to_threshold=20,
+            ))
+        else:
+            indicators.extend([
+                _normal("co2_mmhg", 2.2, 2.5),
+                _normal("sleep_h", bl["sleep"], bl["sleep"]),
+            ])
 
     else:  # healthy - Aya
-        indicators.append(IndicatorValue(id="sleep_h", value=7.1, baseline=bl["sleep"], level=Level.NORMAL, z=0.1,
-            why=[], action="", escalate=""))
-        indicators.append(IndicatorValue(id="hr_rest", value=66, baseline=bl["hr"], level=Level.NORMAL, z=0.2,
-            why=[], action="", escalate=""))
-        indicators.append(IndicatorValue(id="mood", value=4, baseline=bl["mood"], level=Level.NORMAL, z=0,
-            why=[], action="", escalate=""))
-        indicators.append(IndicatorValue(id="stress", value=1, baseline=bl["stress"], level=Level.NORMAL, z=0,
-            why=[], action="", escalate=""))
-        indicators.append(IndicatorValue(id="exercise_min", value=95, baseline=bl["exercise"], level=Level.NORMAL, z=0,
-            why=[], action="", escalate=""))
-        indicators.append(IndicatorValue(id="co2_mmhg", value=2.2, baseline=2.5, level=Level.NORMAL, z=-0.5,
-            why=[], action="", escalate=""))
-
-    # Filtrar indicadores vacíos (solo para healthy)
-    indicators = [i for i in indicators if i.value is not None]
+        indicators.extend([
+            _normal("sleep_h", 7.1, bl["sleep"]),
+            _normal("hr_rest", 66, bl["hr"]),
+            _normal("mood", 4, bl["mood"]),
+            _normal("stress", 1, bl["stress"]),
+            _normal("exercise_min", 95, bl["exercise"]),
+            _normal("co2_mmhg", 2.2, 2.5),
+        ])
 
     return StatusResponse(
         crew_id=crew_id,
@@ -198,22 +238,14 @@ def get_mock_status(crew_id: str, day: int) -> StatusResponse:
 
 
 def get_mock_series(crew_id: str, end_day: int, days: int) -> SeriesResponse:
-    """Genera serie mock de 30 días hacia atrás desde end_day."""
+    """Genera serie mock de `days` días hacia atrás desde end_day."""
     start_day = max(0, end_day - days + 1)
     day_range = list(range(start_day, end_day + 1))
 
     member = next((m for m in MOCK_CREW if m["id"] == crew_id), None)
     scenario = member["scenario"] if member else "healthy"
+    bl = get_crew_baseline(crew_id)
 
-    baselines = {
-        "c1": {"sleep": 7.0, "hr": 62, "mood": 4, "stress": 2, "exercise": 90},
-        "c2": {"sleep": 6.5, "hr": 58, "mood": 3, "stress": 2, "exercise": 100},
-        "c3": {"sleep": 7.2, "hr": 65, "mood": 4, "stress": 1, "exercise": 95},
-        "c4": {"sleep": 6.8, "hr": 60, "mood": 3, "stress": 2, "exercise": 85},
-    }
-    bl = baselines[crew_id]
-
-    # Generar serie simple con tendencia según escenario
     series = {
         "sleep_h": [],
         "hr_rest": [],
@@ -224,25 +256,31 @@ def get_mock_series(crew_id: str, end_day: int, days: int) -> SeriesResponse:
     }
 
     for d in day_range:
+        # Todos los indicadores tienen valor cada día; el escenario solo cambia algunos.
+        values = {
+            "sleep_h": bl["sleep"],
+            "hr_rest": bl["hr"],
+            "mood": bl["mood"],
+            "stress": bl["stress"],
+            "exercise_min": bl["exercise"],
+            "co2_mmhg": 2.2,
+        }
         if scenario == "isolation" and d >= 96:
             progress = min((d - 96) / 30, 1.0)
-            series["sleep_h"].append(round(bl["sleep"] - 2.0 * progress, 1))
-            series["mood"].append(round(max(bl["mood"] - 2.0 * progress, 1.5), 1))
-            series["stress"].append(round(bl["stress"] + 2.0 * progress, 1))
+            values["sleep_h"] = round(bl["sleep"] - 2.0 * progress, 1)
+            values["mood"] = round(max(bl["mood"] - 2.0 * progress, 1.5), 1)
+            values["stress"] = round(bl["stress"] + 2.0 * progress, 1)
         elif scenario == "deconditioning" and d >= 60:
             progress = min((d - 60) / 45, 1.0)
-            series["exercise_min"].append(round(bl["exercise"] * (1 - 0.7 * progress)))
-            series["hr_rest"].append(round(bl["hr"] + 20 * progress))
+            values["exercise_min"] = round(bl["exercise"] * (1 - 0.7 * progress))
+            values["hr_rest"] = round(bl["hr"] + 20 * progress)
         elif scenario == "co2_high" and d >= 80:
-            series["co2_mmhg"].append(round(2.5 + 0.7 * min((d - 80) / 10, 1.0), 1))
-            series["sleep_h"].append(round(bl["sleep"] - 1.0 * min((d - 80) / 10, 1.0), 1))
-        else:
-            series["sleep_h"].append(bl["sleep"])
-            series["hr_rest"].append(bl["hr"])
-            series["mood"].append(bl["mood"])
-            series["stress"].append(bl["stress"])
-            series["exercise_min"].append(bl["exercise"])
-            series["co2_mmhg"].append(2.2)
+            progress = min((d - 80) / 10, 1.0)
+            values["co2_mmhg"] = round(2.5 + 0.7 * progress, 1)
+            values["sleep_h"] = round(bl["sleep"] - 1.0 * progress, 1)
+
+        for key in series:
+            series[key].append(values[key])
 
     return SeriesResponse(
         crew_id=crew_id,

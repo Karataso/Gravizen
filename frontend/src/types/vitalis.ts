@@ -35,6 +35,7 @@ export interface EarthReportPayload {
   level: HazardLevel;
   message: string;
   created_at: string;
+  client_id: string;
 }
 
 export interface EarthReport extends EarthReportPayload {

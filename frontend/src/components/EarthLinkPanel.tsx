@@ -12,14 +12,10 @@ interface EarthLinkPanelProps {
   onReportCreated: () => void | Promise<void>;
 }
 
-function statusLabel(report: MissionReport, now = Date.now()): string {
+function statusLabel(report: MissionReport): string {
   if (report.status === 'responded') return 'Respondido por Control de Misión';
   if (report.status === 'received') return 'Recibido en Tierra · Esperando médico';
-  const remaining = Math.max(
-    0,
-    Math.ceil((new Date(report.createdAt).getTime() + report.etaMinutes * 60_000 - now) / 60_000),
-  );
-  return `En tránsito (${remaining} min restantes)`;
+  return 'En tránsito';
 }
 
 export const EarthLinkPanel: React.FC<EarthLinkPanelProps> = ({
@@ -33,7 +29,6 @@ export const EarthLinkPanel: React.FC<EarthLinkPanelProps> = ({
   const [formError, setFormError] = useState<string | null>(null);
   const [savedMessage, setSavedMessage] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
-  const [now, setNow] = useState(0);
   const [summary, setSummary] = useState('');
   const [actionTaken, setActionTaken] = useState('');
   const [level, setLevel] = useState<HazardLevel>('act');
@@ -60,10 +55,8 @@ export const EarthLinkPanel: React.FC<EarthLinkPanelProps> = ({
   }, [crewId]);
 
   useEffect(() => {
-    setNow(Date.now());
     void load();
     const interval = window.setInterval(() => {
-      setNow(Date.now());
       void load();
     }, 15_000);
     return () => window.clearInterval(interval);
@@ -210,7 +203,7 @@ export const EarthLinkPanel: React.FC<EarthLinkPanelProps> = ({
                 <div className="earth-report-header">
                   <SeverityReadout severity={report.level} />
                   <span className={`earth-status earth-status-${report.status}`}>
-                    {statusLabel(report, now)}
+                    {statusLabel(report)}
                   </span>
                 </div>
 

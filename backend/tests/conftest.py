@@ -16,7 +16,6 @@ from app.config import get_settings
 # Import all models to register them with Base.metadata
 from app.models import (
     Astronaut,
-    Measurement,
     CheckIn,
     Report,
     ReportLevel,
@@ -76,7 +75,6 @@ def db_session():
         # Clean up test data (keep crew)
         db.execute(delete(CheckIn))
         db.execute(delete(Report))
-        db.execute(delete(Measurement))
         db.commit()
         db.rollback()
         db.close()
@@ -113,31 +111,3 @@ def sample_astronaut(db_session):
     return astro
 
 
-@pytest.fixture
-def sample_measurement(db_session, sample_astronaut):
-    """Medición de prueba."""
-    meas = Measurement(
-        astronaut_id=sample_astronaut.id,
-        day=10,
-        sleep_h=7.0,
-        hr_rest=62.0,
-        mood=4.0,
-        stress=2.0,
-        exercise_min=90.0,
-        rad_dose_msv=0.5,
-        co2_mmhg=2.5,
-        baseline_sleep_h=7.0,
-        baseline_hr_rest=62.0,
-        baseline_mood=4.0,
-        baseline_stress=2.0,
-        baseline_exercise_min=90.0,
-        mad_sleep_h=0.35,
-        mad_hr_rest=2.0,
-        mad_mood=0.5,
-        mad_stress=0.5,
-        mad_exercise_min=10.0,
-    )
-    db_session.add(meas)
-    db_session.commit()
-    db_session.refresh(meas)
-    return meas

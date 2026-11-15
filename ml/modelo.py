@@ -75,12 +75,17 @@ def _parse_label(value) -> int:
         return 0
 
 
+@lru_cache(maxsize=4)
+def _cached_dataset(path: str) -> pd.DataFrame:
+    return _read_dataset(path)
+
+
 def load_and_normalize_dataset(csv_path=None) -> pd.DataFrame:
     path = Path(csv_path) if csv_path else DEFAULT_DATASET
     if not path.exists():
         raise FileNotFoundError(f"No se encontro el dataset '{path}'.")
     # Copia para que cada llamada pueda filtrar sin tocar la cache.
-    return _read_dataset(str(path)).copy()
+    return _cached_dataset(str(path)).copy()
 
 
 # 2. MOTOR DE REGLAS (Mediana, MAD y absolutos)
@@ -164,12 +169,20 @@ def train_and_save_isolation_forest(df_train):
     model = IsolationForest(n_estimators=150, contamination=0.05, random_state=42)
     model.fit(df_healthy[FEATURES].values)
     joblib.dump(model, MODEL_PATH)
+    _load_model.cache_clear()
     return model
+
+
+@lru_cache(maxsize=1)
+def _load_model():
+    if MODEL_PATH.exists():
+        return joblib.load(MODEL_PATH)
+    return train_and_save_isolation_forest(load_and_normalize_dataset())
 
 
 def load_isolation_forest(df_fallback=None):
     if MODEL_PATH.exists():
-        return joblib.load(MODEL_PATH)
+        return _load_model()
     if df_fallback is None:
         df_fallback = load_and_normalize_dataset()
     return train_and_save_isolation_forest(df_fallback)
@@ -181,7 +194,7 @@ def score_with_isolation_forest(df_data, model=None):
         model = load_isolation_forest()
     X = df_data[FEATURES].astype(float).values
     preds = model.predict(X)
-    return (preds == -1).astype(int), model.decision_function(X)
+    return (preds == -1).astype(int)
 
 
 # 4. PROYECCION TEMPORAL
@@ -271,13 +284,17 @@ def evaluate(crew_id, day, csv_path=None):
         return None
 
     window = person[person['day'] <= day]
-    sleep_med, sleep_mad = calculate_mad(window['sleep'])
-    pulse_med, pulse_mad = calculate_mad(window['pulse'])
-    stress_med, stress_mad = calculate_mad(window['stress'])
-    spo2_med, spo2_mad = calculate_mad(window['spo2'])
+    # Línea base fija de los primeros 14 días (sin mirar días futuros).
+    baseline = person[person['day'] <= min(day, 13)]
+    if baseline.empty:
+        baseline = window
+    sleep_med, sleep_mad = calculate_mad(baseline['sleep'])
+    pulse_med, pulse_mad = calculate_mad(baseline['pulse'])
+    stress_med, stress_mad = calculate_mad(baseline['stress'])
+    spo2_med, spo2_mad = calculate_mad(baseline['spo2'])
 
     row = window.iloc[-1]
-    if_flags, _ = score_with_isolation_forest(window)
+    if_flags = score_with_isolation_forest(window)
     if_flag = int(if_flags[-1])
 
     sleep_level = _level_from_z(row['sleep'], sleep_med, sleep_mad)
@@ -338,7 +355,7 @@ def evaluate_system_from_csv(csv_path=None):
 
     for _, df_person in df_eval.groupby('crew_id'):
         df_person = df_person.sort_values('day')
-        if_flags, _ = score_with_isolation_forest(df_person, model)
+        if_flags = score_with_isolation_forest(df_person, model)
         rule_flags = evaluate_rules(df_person)['rule_flag'].values
         combined = np.where((rule_flags == 1) | (if_flags == 1), 1, 0)
 

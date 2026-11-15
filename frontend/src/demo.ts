@@ -1,3 +1,5 @@
+// shortcut: copia del mock del backend, conservada como plan B visual.
+// Si cambian los escenarios en backend/app/services/data_loader.py, cámbialos también aquí.
 import { getHazardAction, responseProtocol } from './domain';
 import type {
   CrewMember,

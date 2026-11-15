@@ -21,7 +21,6 @@ Errores: `{"detail": "mensaje"}` (formato FastAPI).
 | GET | `/api/reports?crew_id=` | Reportes con estado de tránsito |
 | POST | `/api/reports/{id}/respond` | Simula la respuesta de Tierra |
 | GET | `/api/profiles` | Perfiles de misión y sus parámetros |
-| POST | `/api/sim/storm` | *(demo)* Inyecta tormenta solar |
 
 ## Formas
 
@@ -106,8 +105,12 @@ Los nombres de campo son exactos: uno desconocido devuelve **422** (no se ignora
 ### `POST /api/crew/c1/reports`
 
 ```json
-{"day": 118, "level": "act", "hazard": "iso", "message": "Sueño y ánimo bajos, 4 días. ¿Ajustamos carga?"}
+{"day": 118, "level": "act", "hazard": "iso", "message": "Sueño y ánimo bajos, 4 días. ¿Ajustamos carga?",
+ "client_id": "6f1c3a52-4b0e-4f2a-9f0e-7a1c2d3e4f50"}
 ```
+
+`client_id` es opcional. Repetir el POST con el mismo id devuelve el mismo
+reporte en vez de crear un duplicado (reintentos offline).
 
 ```json
 {"id": "r_7", "crew_id": "c1", "day": 118, "level": "act", "hazard": "iso",
@@ -133,13 +136,6 @@ Retraso: Estación 0 · Luna 3 · Marte 20 min. En demo, ×60.
   "description": "...", "radiation_base_msv": 1.8, "comms_delay_minutes": 20,
   "co2_base_mmhg": 2.5}], "current": "mars_transit"}
 ```
-
-### `POST /api/sim/storm`
-
-```json
-{"day": 96, "intensity": 1.0, "duration_days": 2}
-```
-→ `{"success": true, "message": "...", "storm_day": 96, "intensity": 1.0, "duration_days": 2}`
 
 ## Diferencias respecto a `PROJECT.md` §9 (decididas al integrar el backend)
 
