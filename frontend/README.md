@@ -1,75 +1,47 @@
-# React + TypeScript + Vite
+# Vitalis · Frontend dashboard
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Dashboard React + TypeScript + Tailwind + Recharts para el MVP de Vitalis. La interfaz integra el estado de misión con los módulos de check-in diario y enlace con Tierra, y funciona como PWA con persistencia offline.
 
-Currently, two official plugins are available:
+## Ejecutar
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+Requiere Node.js `20.19+` o `22.12+`.
 
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
+```bash
+npm ci
+cp .env.example .env.local
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://npmx.dev/package/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://npmx.dev/package/eslint-plugin-react-dom) for React-specific lint rules:
+La URL base del backend se configura con `VITE_API_URL` (sin `/api`). Si se deja vacía, el frontend consulta `/api` en el mismo origen. `VITE_DEMO_MODE=true` activa datos falsos de forma explícita y visible; no sustituye silenciosamente a la API cuando esta falla.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## Módulos
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+- **Dashboard:** estado personal, semáforos de tripulación, peligros NASA, proyección, acción sugerida, urgencia y tendencia de indicadores.
+- **Check-in diario:** formulario de sueño, ánimo, estrés y síntomas. Se guarda en IndexedDB y se sincroniza cuando vuelve la red.
+- **Enlace con Tierra:** bitácora de reportes en tránsito, acción autónoma y simulación de latencia.
 
+La lista de tripulación muestra únicamente nombre, rol y semáforo; no expone datos clínicos de otras personas.
+
+## Contrato consumido
+
+- `GET /api/crew?day={day}`
+- `GET /api/crew/{id}/status?day={day}`
+- `GET /api/crew/{id}/series?end_day={day}&days=30`
+- `POST /api/crew/{id}/checkins`
+- `POST /api/crew/{id}/reports`
+
+El frontend normaliza y valida en tiempo de ejecución las respuestas `snake_case` descritas en [`../docs/api.md`](../docs/api.md). Los días sin medición se conservan como `null` y aparecen como huecos; no se interpolan.
+
+## PWA y offline
+
+`vite-plugin-pwa` genera el manifiesto y el service worker para el modo standalone. Check-ins y reportes pendientes se conservan en IndexedDB mediante `idb`; la barra de sincronización indica el estado de conexión y los elementos pendientes, y permite reintentar manualmente.
+
+## Verificar
+
+```bash
+npm run lint
+npm run typecheck
+npm run build
 ```
+
+El diseño incluye modo oscuro y claro, foco visible, controles táctiles de al menos 44 px, estados de carga/error/vacío y una composición verificada a 400 px sin desbordamiento horizontal.

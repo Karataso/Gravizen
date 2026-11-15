@@ -10,11 +10,11 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       manifest: {
-        name: 'Vitalis — Soporte Médico Espacial',
+        name: 'Vitalis — Salud en misión',
         short_name: 'Vitalis',
-        description: 'Monitoreo de salud y autonomía en misión espacial profunda',
-        theme_color: '#0f172a',
-        background_color: '#0f172a',
+        description: 'Monitoreo de salud, alertas y autonomía para misiones espaciales profundas.',
+        theme_color: '#07131f',
+        background_color: '#07131f',
         display: 'standalone',
         start_url: '/',
         icons: [
@@ -28,4 +28,5 @@ export default defineConfig({
       },
     }),
   ],
+  server: { port: 5173 },
 });

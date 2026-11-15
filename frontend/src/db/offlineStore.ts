@@ -62,15 +62,28 @@ export async function syncPendingCheckIns(apiBaseUrl: string): Promise<number> {
 
   for (const item of pending) {
     try {
-      // crew_id va en la URL; recorded_at es local. El resto es el body de la API.
-      const { local_id, synced, crew_id, recorded_at, ...payload } = item;
-      const res = await fetch(`${apiBaseUrl}/api/crew/${crew_id}/checkins`, {
+      // crew_id va en la URL y recorded_at es local. El resto es el body de la API.
+      const payload = {
+        day: item.day,
+        sleep_h: item.sleep_h,
+        mood: item.mood,
+        stress: item.stress,
+        headache: item.headache,
+        vision_change: item.vision_change,
+        dizziness: item.dizziness,
+        nausea: item.nausea,
+        back_pain: item.back_pain,
+        fever: item.fever,
+        self_harm: item.self_harm,
+        note: item.note,
+      };
+      const res = await fetch(`${apiBaseUrl}/api/crew/${item.crew_id}/checkins`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
 
-      if (res.ok && local_id !== undefined) {
+      if (res.ok && item.local_id !== undefined) {
         await db.put('checkins', { ...item, synced: true });
         syncedCount++;
       }
@@ -109,14 +122,19 @@ export async function syncPendingReports(apiBaseUrl: string): Promise<number> {
   for (const item of pending) {
     try {
       // El reporte de la API solo lleva day, level, hazard y message.
-      const { local_id, synced, status, id, earth_reply, crew_id, created_at, ...payload } = item;
-      const res = await fetch(`${apiBaseUrl}/api/crew/${crew_id}/reports`, {
+      const payload = {
+        day: item.day,
+        level: item.level,
+        hazard: item.hazard,
+        message: item.message,
+      };
+      const res = await fetch(`${apiBaseUrl}/api/crew/${item.crew_id}/reports`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
 
-      if (res.ok && local_id !== undefined) {
+      if (res.ok && item.local_id !== undefined) {
         await db.put('reports', { ...item, synced: true });
         syncedCount++;
       }

@@ -6,7 +6,7 @@ import {
   getAllLocalReports,
 } from '../db/offlineStore';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const API_URL = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '');
 
 export function useSyncQueue() {
   const [isOnline, setIsOnline] = useState<boolean>(navigator.onLine);

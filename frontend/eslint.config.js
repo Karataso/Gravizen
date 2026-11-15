@@ -18,5 +18,9 @@ export default defineConfig([
     languageOptions: {
       globals: globals.browser,
     },
+    rules: {
+      // Los estados de carga se sincronizan con las peticiones externas de la API.
+      'react-hooks/set-state-in-effect': 'off',
+    },
   },
 ])

@@ -18,7 +18,7 @@ export const EarthLinkPanel: React.FC<EarthLinkPanelProps> = ({
 }) => {
   const [reports, setReports] = useState<EarthReport[]>([]);
   const [fastForward, setFastForward] = useState<boolean>(false);
-  const [nowMs, setNowMs] = useState<number>(Date.now());
+  const [nowMs, setNowMs] = useState<number>(0);
   const [simOffsetSec, setSimOffsetSec] = useState<number>(0);
 
   // Formulario rápido de reporte manual
@@ -37,6 +37,7 @@ export const EarthLinkPanel: React.FC<EarthLinkPanelProps> = ({
 
   // Reloj de simulación (normal 1x o acelerado x60)
   useEffect(() => {
+    setNowMs(Date.now());
     const interval = setInterval(() => {
       setNowMs(Date.now());
       if (fastForward) {
