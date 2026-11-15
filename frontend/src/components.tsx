@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, type CSSProperties } from 'react';
 import {
   Line,
   LineChart,
@@ -16,47 +16,49 @@ import type {
   Severity,
 } from './types';
 
-function SeverityIcon({ severity }: { severity: Severity }) {
-  if (severity === 'normal') {
-    return (
-      <svg viewBox="0 0 16 16" aria-hidden="true">
-        <circle cx="8" cy="8" r="6" />
-        <path d="m5 8 2 2 4-4" />
-      </svg>
-    );
-  }
-
-  if (severity === 'watch') {
-    return (
-      <svg viewBox="0 0 16 16" aria-hidden="true">
-        <path d="M8 2.2 14 13H2L8 2.2Z" />
-        <path d="M8 6v3.5M8 11.5v.1" />
-      </svg>
-    );
-  }
-
-  if (severity === 'act') {
-    return (
-      <svg viewBox="0 0 16 16" aria-hidden="true">
-        <path d="m8 1.8 6.2 6.2L8 14.2 1.8 8 8 1.8Z" />
-        <path d="M8 5v3.5M8 10.8v.1" />
-      </svg>
-    );
-  }
-
+function SeverityDot({
+  severity,
+  size = 10,
+  className = '',
+}: {
+  severity: Severity;
+  size?: number;
+  className?: string;
+}) {
   return (
-    <svg viewBox="0 0 16 16" aria-hidden="true">
-      <path d="M5.2 1.8h5.6L14.2 5.2v5.6l-3.4 3.4H5.2L1.8 10.8V5.2L5.2 1.8Z" />
-      <path d="M8 4.5v4M8 10.8v.1" />
-    </svg>
+    <span
+      className={`severity-indicator severity-${severity} ${className}`.trim()}
+      style={{ '--indicator-size': `${size}px` } as CSSProperties}
+      aria-hidden="true"
+    />
   );
 }
 
 export function SeverityBadge({ severity }: { severity: Severity }) {
   return (
-    <span className={`severity severity-${severity}`}>
-      <SeverityIcon severity={severity} />
-      {severityLabel[severity]}
+    <span className={`severity-badge severity-${severity}`}>
+      <SeverityDot severity={severity} size={10} />
+      <span>{severityLabel[severity]}</span>
+    </span>
+  );
+}
+
+export function TrafficLight({ severity, size = 12, ariaLabel }: { severity: Severity; size?: number; ariaLabel?: string }) {
+  return (
+    <span
+      className={`traffic-light severity-indicator severity-${severity}`}
+      style={{ '--indicator-size': `${size}px` } as CSSProperties}
+      aria-label={ariaLabel ?? severityLabel[severity]}
+      role="img"
+    />
+  );
+}
+
+export function SeverityReadout({ severity }: { severity: Severity }) {
+  return (
+    <span className={`severity-readout severity-${severity}`}>
+      <SeverityDot severity={severity} size={10} />
+      <span>{severityLabel[severity]}</span>
     </span>
   );
 }
@@ -86,13 +88,13 @@ export function HazardCard({ hazard }: { hazard: HazardStatus }) {
   const headingId = `hazard-title-${hazard.id}`;
 
   return (
-    <article className={`panel hazard-card severity-card-${hazard.level}`} aria-labelledby={headingId}>
-      <div className="card-heading">
+    <article className={`hazard-card ${hazard.level}`} aria-labelledby={headingId}>
+      <div className="hazard-header">
         <div>
           <p className="eyebrow">Peligro NASA</p>
           <h3 id={headingId}>{meta.label}</h3>
         </div>
-        <SeverityBadge severity={hazard.level} />
+        <SeverityReadout severity={hazard.level} />
       </div>
 
       <p className="hazard-description">{meta.description}</p>
@@ -110,22 +112,20 @@ export function HazardCard({ hazard }: { hazard: HazardStatus }) {
         )}
       </div>
 
-      <dl className="protocol-list">
-        <div>
-          <dt>Proyección</dt>
-          <dd>
-            <ProjectionText days={hazard.daysToThreshold} />
-          </dd>
+      <div className="hazard-protocol">
+        <div className="protocol-item">
+          <span className="protocol-label">Proyección</span>
+          <span className="protocol-value"><ProjectionText days={hazard.daysToThreshold} /></span>
         </div>
-        <div>
-          <dt>Acción sugerida</dt>
-          <dd>{hazard.action}</dd>
+        <div className="protocol-item">
+          <span className="protocol-label">Acción sugerida</span>
+          <span className="protocol-value">{hazard.action}</span>
         </div>
-        <div>
-          <dt>Urgencia</dt>
-          <dd>{hazard.urgency}</dd>
+        <div className="protocol-item">
+          <span className="protocol-label">Urgencia</span>
+          <span className="protocol-value">{hazard.urgency}</span>
         </div>
-      </dl>
+      </div>
     </article>
   );
 }
@@ -162,7 +162,11 @@ function useChartSize() {
     return () => observer.disconnect();
   }, [element]);
 
-  return { chartRef, ...size };
+  // Fallback: if size is still 0 after mount, use a reasonable default
+  const width = size.width || 320;
+  const height = size.height || 220;
+
+  return { chartRef, width, height };
 }
 
 export function TrendChart({
@@ -352,8 +356,8 @@ export function AlertPanel({ hazards }: { hazards: HazardStatus[] }) {
   const alerts = hazards.filter((hazard) => hazard.level !== 'normal');
 
   return (
-    <section className="panel alerts" aria-labelledby="alerts-title">
-      <div className="section-title">
+    <section className="panel alerts-panel" aria-labelledby="alerts-title">
+      <div className="alerts-header">
         <div>
           <p className="eyebrow">Respuesta autónoma</p>
           <h2 id="alerts-title">Alertas activas</h2>
@@ -368,8 +372,8 @@ export function AlertPanel({ hazards }: { hazards: HazardStatus[] }) {
         </div>
       ) : alerts.length === 0 ? (
         <div className="all-clear" role="status">
-          <span aria-hidden="true">✓</span>
-          <div>
+          <span className="all-clear-icon" aria-hidden="true">✓</span>
+          <div className="all-clear-text">
             <strong>Sin alertas activas</strong>
             <p>Mantén la rutina y completa el check-in diario.</p>
           </div>
@@ -379,9 +383,9 @@ export function AlertPanel({ hazards }: { hazards: HazardStatus[] }) {
           {alerts.map((alert) => {
             const meta = getHazardMeta(alert.id);
             return (
-              <article className={`alert-row alert-${alert.level}`} role="listitem" key={alert.id}>
-                <div className="alert-heading">
-                  <SeverityBadge severity={alert.level} />
+              <article className={`alert-card ${alert.level}`} role="listitem" key={alert.id}>
+                <div className="alert-header">
+                  <SeverityReadout severity={alert.level} />
                   <b>{meta.label}</b>
                 </div>
                 {alert.why.length > 0 ? (
@@ -415,23 +419,22 @@ export function CrewSwitcher({
   return (
     <nav className="crew-switcher" aria-label="Resumen de tripulación">
       <p className="switcher-label" id="crew-summary-label">Semáforo de la tripulación</p>
-      <ul aria-labelledby="crew-summary-label">
+      <ul className="crew-list" aria-labelledby="crew-summary-label">
         {members.map((member) => {
           const selected = member.id === selectedId;
           return (
             <li key={member.id}>
               <button
                 type="button"
-                className={selected ? 'crew active' : 'crew'}
+                className={`crew-btn ${selected ? 'active' : ''}`}
                 onClick={() => onSelect(member.id)}
                 aria-pressed={selected}
               >
-                <span className="avatar" aria-hidden="true">{member.name.slice(0, 1)}</span>
-                <span className="crew-identity">
-                  <b>{member.name}</b>
-                  <small>{member.role}</small>
-                </span>
-                <SeverityBadge severity={member.severity} />
+                <TrafficLight severity={member.severity} size={14} ariaLabel={`${member.name}: ${severityLabel[member.severity]}`} />
+                <div className="crew-info">
+                  <span className="crew-name">{member.name}</span>
+                  <span className="crew-role">{member.role}</span>
+                </div>
               </button>
             </li>
           );
@@ -443,20 +446,20 @@ export function CrewSwitcher({
 
 export function DaySlider({ day, onChange }: { day: number; onChange: (day: number) => void }) {
   return (
-    <div className="day-control">
+    <div className="day-slider">
       <label htmlFor="mission-day">
         <span>Día de misión</span>
-        <output htmlFor="mission-day">Día {day} de 120</output>
+        <output htmlFor="mission-day">Día {day} de 119</output>
       </label>
       <input
         id="mission-day"
         type="range"
         min="0"
-        max="120"
+        max="119"
         step="1"
         value={day}
         onChange={(event) => onChange(Number(event.target.value))}
-        aria-valuetext={`Día ${day} de 120`}
+        aria-valuetext={`Día ${day} de 119`}
       />
       <div className="day-scale" aria-hidden="true"><span>Lanzamiento</span><span>Final</span></div>
     </div>

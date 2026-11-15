@@ -407,6 +407,7 @@ function knownProfile(value: string | null): MissionProfile | null {
 }
 
 export async function fetchReports(crewId: string, signal?: AbortSignal): Promise<MissionReport[]> {
+  if (DEMO_MODE) return [];
   const query = new URLSearchParams({ crew_id: crewId });
   const payload = await getJson(`/api/reports?${query.toString()}`, signal);
   const raw = isRecord(payload) && Array.isArray(payload.reports) ? payload.reports : null;

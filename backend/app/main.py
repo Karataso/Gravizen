@@ -16,14 +16,14 @@ settings = get_settings()
 async def lifespan(app: FastAPI):
     """Eventos de startup y shutdown."""
     # Startup
-    print(f"🚀 Iniciando {settings.app_name} v{settings.app_version}")
+    print(f"Iniciando {settings.app_name} v{settings.app_version}")
     print(f"   Entorno: {settings.environment}")
     print(f"   Debug: {settings.debug}")
     print(f"   DB: {settings.database_url}")
 
     # Crear tablas
     init_db()
-    print("   ✅ Base de datos inicializada")
+    print("   Base de datos inicializada")
 
     # Sembrar tripulación mock (ml/ reemplazará las mediciones)
     from app.database import SessionLocal
@@ -34,9 +34,9 @@ async def lifespan(app: FastAPI):
     yield
 
     # Shutdown
-    print("🛑 Apagando...")
+    print("Apagando...")
     engine.dispose()
-    print("   ✅ Conexiones cerradas")
+    print("   Conexiones cerradas")
 
 
 app = FastAPI(

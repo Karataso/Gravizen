@@ -1,27 +1,15 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Radio, Clock, Send, AlertCircle, WifiOff } from 'lucide-react';
-import type { EarthReport, HazardLevel } from '../types/vitalis';
-import type { MissionReport } from '../types';
-import { getAllLocalReports, saveReportOffline } from '../db/offlineStore';
+import { AlertCircle, Clock, Radio, Send, WifiOff } from 'lucide-react';
 import { fetchReports } from '../api';
+import { SeverityReadout } from '../components';
+import { getAllLocalReports, saveReportOffline } from '../db/offlineStore';
+import type { MissionReport } from '../types';
+import type { EarthReport, HazardLevel } from '../types/vitalis';
 
 interface EarthLinkPanelProps {
   crewId: string;
   currentDay: number;
-  onReportCreated: () => void;
-}
-
-const LEVEL_LABEL: Record<string, string> = {
-  normal: 'Normal',
-  watch: 'Vigilar',
-  act: 'Actuar',
-  emergency: 'Emergencia',
-};
-
-function levelClasses(level: string): string {
-  if (level === 'emergency') return 'bg-red-500/20 text-red-300';
-  if (level === 'act') return 'bg-orange-500/20 text-orange-300';
-  return 'bg-amber-500/20 text-amber-300';
+  onReportCreated: () => void | Promise<void>;
 }
 
 function statusLabel(report: MissionReport, now = Date.now()): string {
@@ -42,16 +30,21 @@ export const EarthLinkPanel: React.FC<EarthLinkPanelProps> = ({
   const [serverReports, setServerReports] = useState<MissionReport[]>([]);
   const [pendingReports, setPendingReports] = useState<EarthReport[]>([]);
   const [apiError, setApiError] = useState<string | null>(null);
-  const [now, setNow] = useState<number>(0);
-
-  // Formulario rápido de reporte manual
+  const [formError, setFormError] = useState<string | null>(null);
+  const [savedMessage, setSavedMessage] = useState<string | null>(null);
+  const [sending, setSending] = useState(false);
+  const [now, setNow] = useState(0);
   const [summary, setSummary] = useState('');
   const [actionTaken, setActionTaken] = useState('');
   const [level, setLevel] = useState<HazardLevel>('act');
 
   const load = useCallback(async () => {
-    const local = await getAllLocalReports();
-    setPendingReports(local.filter((report) => !report.synced).reverse());
+    try {
+      const local = await getAllLocalReports();
+      setPendingReports(local.filter((report) => !report.synced).reverse());
+    } catch {
+      setPendingReports([]);
+    }
 
     if (!navigator.onLine) {
       setApiError('Sin conexión: se muestran solo los reportes en cola local.');
@@ -69,179 +62,196 @@ export const EarthLinkPanel: React.FC<EarthLinkPanelProps> = ({
   useEffect(() => {
     setNow(Date.now());
     void load();
-    const interval = setInterval(() => {
+    const interval = window.setInterval(() => {
       setNow(Date.now());
       void load();
-    }, 5000);
-    return () => clearInterval(interval);
+    }, 15_000);
+    return () => window.clearInterval(interval);
   }, [load]);
 
-  const handleSendReport = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!summary.trim()) return;
+  const handleSendReport = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setFormError(null);
+    setSavedMessage(null);
 
-    await saveReportOffline({
-      crew_id: crewId,
-      day: currentDay,
-      hazard: 'dist',
-      level,
-      message:
-        summary.trim() +
-        ' — Acción tomada: ' +
-        (actionTaken.trim() || 'protocolo autónomo inicial ejecutado a bordo.'),
-      created_at: new Date().toISOString(),
-    });
+    if (!summary.trim()) {
+      setFormError('Describe la situación antes de transmitir el reporte.');
+      return;
+    }
 
-    setSummary('');
-    setActionTaken('');
-    await load();
-    onReportCreated();
+    setSending(true);
+    try {
+      await saveReportOffline({
+        crew_id: crewId,
+        day: currentDay,
+        hazard: 'dist',
+        level,
+        message:
+          `${summary.trim()} — Acción tomada: ` +
+          (actionTaken.trim() || 'protocolo autónomo inicial ejecutado a bordo.'),
+        created_at: new Date().toISOString(),
+      });
+
+      setSummary('');
+      setActionTaken('');
+      await onReportCreated();
+      await load();
+      setSavedMessage('Reporte guardado en la cola de sincronización.');
+    } catch {
+      setFormError('No se pudo guardar el reporte. Inténtalo de nuevo.');
+    } finally {
+      setSending(false);
+    }
   };
 
   const hasReports = serverReports.length > 0 || pendingReports.length > 0;
 
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 text-slate-100 max-w-2xl mx-auto space-y-5">
-      {/* Cabecera con latencia según perfil */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-4">
-        <div className="flex items-center gap-2.5">
-          <Radio className="w-5 h-5 text-sky-400 animate-pulse" />
+    <section className="earth-panel" aria-labelledby="earth-title">
+      <header className="earth-header">
+        <div className="earth-heading">
+          <span className="earth-radio-icon" aria-hidden="true">
+            <Radio size={20} />
+          </span>
           <div>
-            <h2 className="text-lg font-semibold">Enlace con Tierra</h2>
-            <p className="text-xs text-slate-400">
-              El retraso lo fija la API según el perfil de misión (Estación 0 · Luna 3 · Marte 20 min).
-            </p>
+            <p className="eyebrow">Canal de misión</p>
+            <h2 id="earth-title">Enlace con Tierra</h2>
+            <p>La latencia y el estado de cada transmisión los determina la API según el perfil de misión.</p>
           </div>
         </div>
-      </div>
+        <span className="earth-latency-badge">Estación 0 · Luna 3 · Marte 20 min</span>
+      </header>
 
-      {/* Crear reporte rápido */}
-      <form onSubmit={handleSendReport} className="bg-slate-800/60 p-4 rounded-lg space-y-3">
-        <div className="flex items-center justify-between">
-          <span className="text-sm font-medium text-slate-200">Nuevo reporte a Houston</span>
-          <select
-            value={level}
-            onChange={(e) => setLevel(e.target.value as HazardLevel)}
-            aria-label="Nivel del reporte"
-            className="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-slate-200"
-          >
-            <option value="watch">Vigilar (Amarillo)</option>
-            <option value="act">Actuar (Naranja)</option>
-            <option value="emergency">Emergencia (Rojo)</option>
-          </select>
+      <form className="earth-form" onSubmit={handleSendReport}>
+        <div className="earth-form-header">
+          <div>
+            <p className="eyebrow">Nuevo reporte</p>
+            <h3>Transmitir a Houston</h3>
+          </div>
+          <div className="earth-level-field">
+            <label htmlFor="report-level">Nivel</label>
+            <select
+              id="report-level"
+              value={level}
+              onChange={(event) => setLevel(event.target.value as HazardLevel)}
+            >
+              <option value="watch">Vigilar</option>
+              <option value="act">Actuar</option>
+              <option value="emergency">Emergencia</option>
+            </select>
+          </div>
         </div>
 
-        <input
-          type="text"
-          value={summary}
-          onChange={(e) => setSummary(e.target.value)}
-          placeholder="Resumen de la situación (ej. CO₂ en 3.2 mmHg en módulo 2)"
-          aria-label="Resumen del reporte"
-          className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white"
-        />
-        <input
-          type="text"
-          value={actionTaken}
-          onChange={(e) => setActionTaken(e.target.value)}
-          placeholder="Acción autónoma tomada a bordo..."
-          aria-label="Acción tomada a bordo"
-          className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white"
-        />
+        <div className="earth-field">
+          <label htmlFor="report-summary">Resumen de la situación</label>
+          <textarea
+            id="report-summary"
+            rows={3}
+            value={summary}
+            onChange={(event) => setSummary(event.target.value)}
+            placeholder="Ej. CO₂ en 3,2 mmHg en módulo 2"
+            required
+          />
+        </div>
 
-        <button
-          type="submit"
-          className="flex items-center justify-center gap-2 w-full py-2 bg-sky-600 hover:bg-sky-500 rounded-lg text-sm font-semibold transition"
-        >
-          <Send className="w-4 h-4" /> Transmitir Reporte
+        <div className="earth-field">
+          <label htmlFor="report-action">Acción autónoma tomada a bordo</label>
+          <textarea
+            id="report-action"
+            rows={2}
+            value={actionTaken}
+            onChange={(event) => setActionTaken(event.target.value)}
+            placeholder="Ej. ventilación activada y medidas de protección repetidas"
+          />
+        </div>
+
+        {formError && (
+          <div className="earth-notice earth-notice-error" role="alert">
+            <span className="earth-notice-dot" aria-hidden="true">!</span>
+            {formError}
+          </div>
+        )}
+
+        {savedMessage && (
+          <div className="earth-notice earth-notice-success" role="status">
+            <span className="earth-notice-dot" aria-hidden="true">✓</span>
+            {savedMessage}
+          </div>
+        )}
+
+        <button type="submit" className="earth-submit" disabled={sending}>
+          <Send size={16} aria-hidden="true" />
+          {sending ? 'Transmitiendo…' : 'Transmitir reporte'}
         </button>
       </form>
 
       {apiError && (
-        <div className="flex items-center gap-2 text-xs text-amber-300 bg-amber-950/40 border border-amber-800 p-2.5 rounded-lg">
-          <WifiOff className="w-4 h-4 shrink-0" /> {apiError}
+        <div className="earth-notice earth-notice-warning" role="status">
+          <WifiOff size={16} aria-hidden="true" />
+          {apiError}
         </div>
       )}
 
-      {/* Reportes del servidor con su estado real de tránsito */}
-      <div className="space-y-3">
-        <h3 className="text-sm font-semibold text-slate-300">Bitácora de Transmisiones</h3>
+      <section className="earth-log" aria-labelledby="earth-log-title">
+        <div className="earth-log-header">
+          <div>
+            <p className="eyebrow">Registro de misión</p>
+            <h3 id="earth-log-title">Bitácora de transmisiones</h3>
+          </div>
+          <span>{serverReports.length + pendingReports.length} reporte{serverReports.length + pendingReports.length === 1 ? '' : 's'}</span>
+        </div>
+
         {!hasReports ? (
-          <p className="text-xs text-slate-500">No hay reportes transmitidos aún.</p>
+          <div className="earth-empty" role="status">No hay reportes transmitidos aún.</div>
         ) : (
-          <>
+          <div className="earth-report-list">
             {serverReports.map((report) => (
-              <div
-                key={report.id}
-                className="bg-slate-800/80 border border-slate-700 rounded-lg p-3.5 space-y-2"
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <span
-                    className={`text-xs font-bold uppercase px-2 py-0.5 rounded ${levelClasses(report.level)}`}
-                  >
-                    {LEVEL_LABEL[report.level] ?? report.level}
-                  </span>
-                  <span
-                    className={`text-xs font-medium px-2.5 py-0.5 rounded-full ${
-                      report.status === 'responded'
-                        ? 'bg-emerald-500/20 text-emerald-300'
-                        : report.status === 'received'
-                          ? 'bg-sky-500/20 text-sky-300'
-                          : 'bg-slate-700 text-slate-300'
-                    }`}
-                  >
+              <article className="earth-report" key={report.id}>
+                <div className="earth-report-header">
+                  <SeverityReadout severity={report.level} />
+                  <span className={`earth-status earth-status-${report.status}`}>
                     {statusLabel(report, now)}
                   </span>
                 </div>
 
-                <p className="text-sm font-medium text-white">{report.message}</p>
+                <p className="earth-report-message">{report.message}</p>
 
                 {report.status === 'transit' && report.level === 'act' && (
-                  <div className="flex items-center gap-1.5 text-xs text-orange-300 bg-orange-950/50 p-2 rounded">
-                    <AlertCircle className="w-4 h-4 shrink-0" />
+                  <div className="earth-priority-note">
+                    <AlertCircle size={16} aria-hidden="true" />
                     Reporte prioritario en tránsito: mantén las medidas autónomas a bordo.
                   </div>
                 )}
 
                 {report.responseMessage && (
-                  <div className="bg-emerald-950/40 border border-emerald-800/60 p-2.5 rounded text-xs text-emerald-200">
+                  <div className="earth-response">
                     <strong>Médico de vuelo:</strong> {report.responseMessage}
                   </div>
                 )}
 
-                <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1">
-                  <span className="flex items-center gap-1">
-                    <Clock className="w-3 h-3" /> Día {report.day}
-                  </span>
+                <footer className="earth-report-footer">
+                  <span><Clock size={13} aria-hidden="true" /> Día {report.day}</span>
                   <span>Sincronizado con API</span>
-                </div>
-              </div>
+                </footer>
+              </article>
             ))}
 
             {pendingReports.map((report, index) => (
-              <div
-                key={report.local_id ?? `pending-${index}`}
-                className="bg-slate-800/50 border border-dashed border-slate-600 rounded-lg p-3.5 space-y-2"
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <span className={`text-xs font-bold uppercase px-2 py-0.5 rounded ${levelClasses(report.level)}`}>
-                    {LEVEL_LABEL[report.level] ?? report.level}
-                  </span>
-                  <span className="text-xs font-medium px-2.5 py-0.5 rounded-full bg-slate-700 text-slate-300">
-                    En cola local
-                  </span>
+              <article className="earth-report earth-report-pending" key={report.local_id ?? `pending-${index}`}>
+                <div className="earth-report-header">
+                  <SeverityReadout severity={report.level} />
+                  <span className="earth-status earth-status-pending">En cola local</span>
                 </div>
-                <p className="text-sm font-medium text-white">{report.message}</p>
-                <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1">
-                  <span className="flex items-center gap-1">
-                    <Clock className="w-3 h-3" /> Día {report.day}
-                  </span>
+                <p className="earth-report-message">{report.message}</p>
+                <footer className="earth-report-footer">
+                  <span><Clock size={13} aria-hidden="true" /> Día {report.day}</span>
                   <span>Se enviará al recuperar la conexión</span>
-                </div>
-              </div>
+                </footer>
+              </article>
             ))}
-          </>
+          </div>
         )}
-      </div>
-    </div>
+      </section>
+    </section>
   );
 };

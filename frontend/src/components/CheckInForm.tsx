@@ -1,13 +1,13 @@
-import React, { useState } from 'react';
-import { AlertTriangle, CheckCircle2, HeartHandshake, WifiOff } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
 import type { SymptomChecklist } from '../types/vitalis';
 import { saveCheckInOffline, saveReportOffline } from '../db/offlineStore';
+import { TrafficLight } from '../components';
 
 interface CheckInFormProps {
   crewId: string;
   currentDay: number;
   isOnline: boolean;
-  onSaved: () => void;
+  onSaved: () => void | Promise<void>;
 }
 
 const INITIAL_SYMPTOMS: SymptomChecklist = {
@@ -43,7 +43,28 @@ export const CheckInForm: React.FC<CheckInFormProps> = ({
   const [notes, setNotes] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
   const [savedMessage, setSavedMessage] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
   const [showEmergencyModal, setShowEmergencyModal] = useState<boolean>(false);
+  const emergencyButtonRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!showEmergencyModal) return;
+
+    const previouslyFocused = document.activeElement instanceof HTMLElement
+      ? document.activeElement
+      : null;
+    emergencyButtonRef.current?.focus();
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setShowEmergencyModal(false);
+    };
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      previouslyFocused?.focus();
+    };
+  }, [showEmergencyModal]);
 
   const toggleSymptom = (key: keyof SymptomChecklist) => {
     setSymptoms((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -62,221 +83,222 @@ export const CheckInForm: React.FC<CheckInFormProps> = ({
 
     const now = new Date().toISOString();
 
-    await saveCheckInOffline({
-      ...symptoms,
-      crew_id: crewId,
-      day: currentDay,
-      sleep_h: parsedSleep,
-      mood,
-      stress,
-      note: notes.trim() || undefined,
-      recorded_at: now,
-    });
+    setSaving(true);
+    try {
+      await saveCheckInOffline({
+        ...symptoms,
+        crew_id: crewId,
+        day: currentDay,
+        sleep_h: parsedSleep,
+        mood,
+        stress,
+        note: notes.trim() || undefined,
+        recorded_at: now,
+      });
 
-    // Protocolo crítico: pensamientos de hacerse daño -> Emergencia inmediata + modal de apoyo
-    if (symptoms.self_harm) {
-      await saveReportOffline({
-        crew_id: crewId,
-        day: currentDay,
-        hazard: 'iso',
-        level: 'emergency',
-        message:
-          'EMERGENCIA DE SALUD MENTAL: Check-in reporta pensamientos de hacerse daño. ' +
-          'Acción tomada: protocolo de apoyo inmediato a bordo y alerta urgente al médico de vuelo.',
-        created_at: now,
-      });
-      setShowEmergencyModal(true);
-    } else if (symptoms.vision_change) {
-      // Visión borrosa -> Alerta Actuar siempre (posible SANS)
-      await saveReportOffline({
-        crew_id: crewId,
-        day: currentDay,
-        hazard: 'grav',
-        level: 'act',
-        message:
-          'Síntoma ocular reportado: visión borrosa / cambio al leer de cerca (posible SANS). ' +
-          'Acción tomada: solicitado examen ocular de agudeza y fondo de ojo.',
-        created_at: now,
-      });
+      if (symptoms.self_harm) {
+        await saveReportOffline({
+          crew_id: crewId,
+          day: currentDay,
+          hazard: 'iso',
+          level: 'emergency',
+          message:
+            'EMERGENCIA DE SALUD MENTAL: Check-in reporta pensamientos de hacerse daño. ' +
+            'Acción tomada: protocolo de apoyo inmediato a bordo y alerta urgente al médico de vuelo.',
+          created_at: now,
+        });
+        setShowEmergencyModal(true);
+      } else if (symptoms.vision_change) {
+        await saveReportOffline({
+          crew_id: crewId,
+          day: currentDay,
+          hazard: 'grav',
+          level: 'act',
+          message:
+            'Síntoma ocular reportado: visión borrosa / cambio al leer de cerca (posible SANS). ' +
+            'Acción tomada: solicitado examen ocular de agudeza y fondo de ojo.',
+          created_at: now,
+        });
+      }
+
+      await onSaved();
+      setSavedMessage(
+        isOnline
+          ? 'Check-in guardado correctamente.'
+          : 'Sin conexión: Check-in guardado en IndexedDB. Se sincronizará al volver la red.'
+      );
+      setSymptoms(INITIAL_SYMPTOMS);
+      setNotes('');
+    } catch {
+      setError('No se pudo guardar el check-in. Revisa el almacenamiento del navegador e inténtalo de nuevo.');
+    } finally {
+      setSaving(false);
     }
-
-    setSavedMessage(
-      isOnline
-        ? 'Check-in guardado y enviado al servidor.'
-        : 'Sin conexión: Check-in guardado en IndexedDB. Se sincronizará al volver la red.'
-    );
-    setSymptoms(INITIAL_SYMPTOMS);
-    setNotes('');
-    onSaved();
   };
 
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 text-slate-100 max-w-xl mx-auto">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold">Check-in Diario · Día {currentDay}</h2>
+    <div className="checkin-form">
+      <div className="checkin-header">
+        <h2 className="checkin-title">Check-in Diario · Día {currentDay}</h2>
         {!isOnline && (
-          <span className="flex items-center gap-1.5 text-xs bg-amber-500/20 text-amber-300 px-2.5 py-1 rounded-full">
-            <WifiOff className="w-3.5 h-3.5" /> Modo Offline
+          <span className="offline-badge">
+            <span className="offline-dot" aria-hidden="true" /> Modo Offline
           </span>
         )}
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
-        {/* Horas de sueño */}
-        <div>
-          <label className="block text-sm text-slate-300 mb-1">Horas de sueño (3 - 12 h)</label>
+      <form onSubmit={handleSubmit} className="checkin-form-inner" noValidate>
+        <div className="form-group">
+          <label htmlFor="sleep-hours" className="form-label">
+            Horas de sueño (3 - 12 h)
+          </label>
           <input
+            id="sleep-hours"
             type="number"
             step="0.5"
             min="3"
             max="12"
             value={sleepHours}
             onChange={(e) => setSleepHours(e.target.value)}
-            className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-sky-500"
+            className="form-input"
+            required
           />
         </div>
 
-        {/* Estado de ánimo (1 a 5) */}
-        <div>
-          <label className="block text-sm text-slate-300 mb-1">
-            Estado de ánimo: <span className="font-bold text-sky-400">{mood} / 5</span>
+        <div className="form-group">
+          <label className="form-label">
+            Estado de ánimo: <span className="mood-value">{mood} / 5</span>
           </label>
-          <div className="grid grid-cols-5 gap-2">
+          <div className="mood-scale" role="radiogroup" aria-label="Estado de ánimo">
             {[1, 2, 3, 4, 5].map((val) => (
               <button
                 type="button"
                 key={val}
                 onClick={() => setMood(val)}
-                className={`py-2 rounded-lg font-medium border transition ${
-                  mood === val
-                    ? 'bg-sky-600 border-sky-400 text-white'
-                    : 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700'
-                }`}
+                className={`mood-btn ${mood === val ? 'active' : ''}`}
+                role="radio"
+                aria-checked={mood === val}
+                aria-label={`${val} de 5`}
               >
                 {val}
               </button>
             ))}
           </div>
-          <div className="flex justify-between text-xs text-slate-500 mt-1">
+          <div className="scale-labels">
             <span>1 = Muy bajo</span>
             <span>5 = Óptimo</span>
           </div>
         </div>
 
-        {/* Nivel de estrés (1 a 5) */}
-        <div>
-          <label className="block text-sm text-slate-300 mb-1">
-            Nivel de estrés: <span className="font-bold text-amber-400">{stress} / 5</span>
+        <div className="form-group">
+          <label className="form-label">
+            Nivel de estrés: <span className="stress-value">{stress} / 5</span>
           </label>
-          <div className="grid grid-cols-5 gap-2">
+          <div className="stress-scale" role="radiogroup" aria-label="Nivel de estrés">
             {[1, 2, 3, 4, 5].map((val) => (
               <button
                 type="button"
                 key={val}
                 onClick={() => setStress(val)}
-                className={`py-2 rounded-lg font-medium border transition ${
-                  stress === val
-                    ? 'bg-amber-600 border-amber-400 text-white'
-                    : 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700'
-                }`}
+                className={`stress-btn ${stress === val ? 'active' : ''}`}
+                role="radio"
+                aria-checked={stress === val}
+                aria-label={`${val} de 5`}
               >
                 {val}
               </button>
             ))}
           </div>
-          <div className="flex justify-between text-xs text-slate-500 mt-1">
+          <div className="scale-labels">
             <span>1 = Tranquilo</span>
             <span>5 = Estrés extremo</span>
           </div>
         </div>
 
-        {/* Lista de síntomas */}
-        <div>
-          <label className="block text-sm text-slate-300 mb-2">Síntomas observados hoy</label>
-          <div className="space-y-2">
+        <div className="form-group">
+          <label className="form-label">Síntomas observados hoy</label>
+          <div className="symptoms-grid">
             {SYMPTOM_LABELS.map(({ key, label, critical }) => (
               <label
                 key={key}
-                className={`flex items-center gap-3 p-2.5 rounded-lg border cursor-pointer transition ${
-                  symptoms[key]
-                    ? critical
-                      ? 'bg-red-950/60 border-red-500 text-red-200'
-                      : 'bg-slate-800 border-sky-500 text-white'
-                    : 'bg-slate-800/50 border-slate-800 text-slate-300 hover:border-slate-700'
-                }`}
+                className={`symptom-item ${symptoms[key] ? 'checked' : ''} ${critical ? 'critical' : ''}`}
               >
                 <input
                   type="checkbox"
                   checked={symptoms[key]}
                   onChange={() => toggleSymptom(key)}
-                  className="w-4 h-4 accent-sky-500"
+                  className="symptom-checkbox"
                 />
-                <span className="text-sm">{label}</span>
+                <span className="symptom-label">{label}</span>
               </label>
             ))}
           </div>
         </div>
 
-        {/* Notas opcionales */}
-        <div>
-          <label className="block text-sm text-slate-300 mb-1">Notas o contexto (opcional)</label>
+        <div className="form-group">
+          <label htmlFor="notes" className="form-label">Notas o contexto (opcional)</label>
           <textarea
+            id="notes"
             rows={2}
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             placeholder="Ej. Turno nocturno, ejercicio intenso antes de medir..."
-            className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-sky-500"
+            className="form-textarea"
           />
         </div>
 
         {error && (
-          <div className="flex items-center gap-2 text-sm text-red-400 bg-red-950/40 border border-red-800 p-3 rounded-lg">
-            <AlertTriangle className="w-4 h-4 shrink-0" /> {error}
+          <div className="form-error" role="alert">
+            <span className="error-icon" aria-hidden="true">!</span>
+            {error}
           </div>
         )}
 
         {savedMessage && (
-          <div className="flex items-center gap-2 text-sm text-emerald-400 bg-emerald-950/40 border border-emerald-800 p-3 rounded-lg">
-            <CheckCircle2 className="w-4 h-4 shrink-0" /> {savedMessage}
+          <div className="form-success" role="status">
+            <span className="success-icon" aria-hidden="true">✓</span>
+            {savedMessage}
           </div>
         )}
 
-        <button
-          type="submit"
-          className="w-full py-2.5 bg-sky-600 hover:bg-sky-500 text-white font-semibold rounded-lg transition"
-        >
-          Guardar Check-in
+        <button type="submit" className="submit-btn" disabled={saving}>
+          {saving ? 'Guardando…' : 'Guardar Check-in'}
         </button>
       </form>
 
-      {/* Modal obligatorio de apoyo inmediato si marca pensamientos de hacerse daño */}
       {showEmergencyModal && (
         <div
           role="alertdialog"
           aria-modal="true"
           aria-labelledby="emergency-title"
-          className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50"
+          aria-describedby="emergency-description"
+          className="emergency-modal-overlay"
         >
-          <div className="bg-slate-900 border-2 border-red-500 rounded-2xl p-6 max-w-md w-full space-y-4">
-            <div className="flex items-center gap-3 text-red-400">
-              <HeartHandshake className="w-8 h-8 shrink-0" />
-              <h3 id="emergency-title" className="text-lg font-bold">
-                No estás solo · Protocolo de Apoyo Activo
-              </h3>
+          <div className="emergency-modal">
+            <div className="emergency-header">
+              <div>
+                <span className="emergency-severity">
+                  <TrafficLight severity="emergency" size={12} ariaLabel="Emergencia" />
+                  <span>Emergencia</span>
+                </span>
+                <h3 id="emergency-title">No estás solo · Protocolo de Apoyo Activo</h3>
+              </div>
             </div>
-            <p className="text-sm text-slate-200 leading-relaxed">
-              Hemos activado una alerta prioritaria de <strong>Emergencia</strong> con el médico de vuelo y el comandante de a bordo.
+            <p id="emergency-description" className="emergency-text">
+              Hemos activado una alerta prioritaria con el médico de vuelo y el comandante de a bordo.
             </p>
-            <div className="bg-slate-800 p-3 rounded-lg text-xs text-slate-300 space-y-1.5">
-              <p>• Contacta de inmediato al oficial médico de la tripulación.</p>
-              <p>• Mantente acompañado en el módulo común; no te aísles.</p>
-              <p>• El canal privado con psicología de tierra ya fue marcado como urgente.</p>
-            </div>
+            <ul className="emergency-guidance">
+              <li>Contacta de inmediato al oficial médico de la tripulación.</li>
+              <li>Mantente acompañado en el módulo común; no te aísles.</li>
+              <li>El canal privado con psicología de tierra ya fue marcado como urgente.</li>
+            </ul>
             <button
+              ref={emergencyButtonRef}
+              type="button"
               onClick={() => setShowEmergencyModal(false)}
-              className="w-full py-2.5 bg-red-600 hover:bg-red-500 text-white font-semibold rounded-lg"
+              className="emergency-btn"
             >
-              Entendido, solicitar apoyo ahora
+              Entendido · mantener protocolo activo
             </button>
           </div>
         </div>
