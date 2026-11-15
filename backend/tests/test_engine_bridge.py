@@ -44,3 +44,10 @@ def test_profile_change_sets_report_delay(client: TestClient):
     finally:
         # La sesión de tests comparte la fila del tripulante entre tests.
         client.patch("/api/crew/c1", json={"profile": "mars_transit"})
+
+
+def test_status_always_has_five_hazards(client: TestClient):
+    """El dashboard depende de los 5 peligros, incluso en un tripulante sano."""
+    status = client.get("/api/crew/c3/status?day=118").json()
+    assert [h["id"] for h in status["hazards"]] == ["rad", "iso", "grav", "env", "dist"]
+    assert all(h["level"] == "normal" for h in status["hazards"])
