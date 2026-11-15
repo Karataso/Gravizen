@@ -182,61 +182,61 @@ export default function App() {
             <span className="brand-subtitle">Salud en misión</span>
           </div>
         </div>
+
+        <nav className="module-nav" aria-label="Módulos de Vitalis">
+          <div className="module-tabs">
+            <button
+              type="button"
+              className={view === 'dashboard' ? 'module-tab active' : 'module-tab'}
+              onClick={() => setView('dashboard')}
+              aria-pressed={view === 'dashboard'}
+            >
+              Dashboard
+            </button>
+            <button
+              type="button"
+              className={view === 'checkin' ? 'module-tab active' : 'module-tab'}
+              onClick={() => setView('checkin')}
+              aria-pressed={view === 'checkin'}
+            >
+              <span className="module-label-full">Check-in diario</span>
+              <span className="module-label-short">Check-in</span>
+            </button>
+            <button
+              type="button"
+              className={view === 'earth' ? 'module-tab active' : 'module-tab'}
+              onClick={() => setView('earth')}
+              aria-pressed={view === 'earth'}
+            >
+              <span className="module-label-full">Enlace con Tierra</span>
+              <span className="module-label-short">Tierra</span>
+            </button>
+          </div>
+
+          <div className="sync-controls">
+            {pendingCount > 0 && (
+              <span className="pending-badge" aria-live="polite">
+                {pendingCount} pendiente{pendingCount === 1 ? '' : 's'}
+              </span>
+            )}
+            <button
+              type="button"
+              className={`sync-btn ${isSyncing ? 'syncing' : ''}`}
+              onClick={() => void triggerSync()}
+              disabled={!isOnline || isSyncing}
+              aria-label={isSyncing ? 'Sincronizando datos' : 'Sincronizar datos'}
+            >
+              <span className="sync-icon" aria-hidden="true">
+                <span className="sync-arrow" />
+                <span className="sync-arrow" />
+              </span>
+              <span className="sync-label">
+                {isSyncing ? 'Sincronizando…' : 'Sincronizar'}
+              </span>
+            </button>
+          </div>
+        </nav>
       </header>
-
-      <nav className="module-nav" aria-label="Módulos de Vitalis">
-        <div className="module-tabs">
-          <button
-            type="button"
-            className={view === 'dashboard' ? 'module-tab active' : 'module-tab'}
-            onClick={() => setView('dashboard')}
-            aria-pressed={view === 'dashboard'}
-          >
-            Dashboard
-          </button>
-          <button
-            type="button"
-            className={view === 'checkin' ? 'module-tab active' : 'module-tab'}
-            onClick={() => setView('checkin')}
-            aria-pressed={view === 'checkin'}
-          >
-            <span className="module-label-full">Check-in diario</span>
-            <span className="module-label-short">Check-in</span>
-          </button>
-          <button
-            type="button"
-            className={view === 'earth' ? 'module-tab active' : 'module-tab'}
-            onClick={() => setView('earth')}
-            aria-pressed={view === 'earth'}
-          >
-            <span className="module-label-full">Enlace con Tierra</span>
-            <span className="module-label-short">Tierra</span>
-          </button>
-        </div>
-
-        <div className="sync-controls">
-          {pendingCount > 0 && (
-            <span className="pending-badge" aria-live="polite">
-              {pendingCount} pendiente{pendingCount === 1 ? '' : 's'}
-            </span>
-          )}
-          <button
-            type="button"
-            className={`sync-btn ${isSyncing ? 'syncing' : ''}`}
-            onClick={() => void triggerSync()}
-            disabled={!isOnline || isSyncing}
-            aria-label={isSyncing ? 'Sincronizando datos' : 'Sincronizar datos'}
-          >
-            <span className="sync-icon" aria-hidden="true">
-              <span className="sync-arrow" />
-              <span className="sync-arrow" />
-            </span>
-            <span className="sync-label">
-              {isSyncing ? 'Sincronizando…' : 'Sincronizar'}
-            </span>
-          </button>
-        </div>
-      </nav>
 
       <div className="layout">
         <aside className="crew-sidebar">

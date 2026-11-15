@@ -57,7 +57,7 @@
   --safe-right: env(safe-area-inset-right, 0px);
 
   --header-height: 64px;
-  --nav-height: 56px;
+  --nav-height: 0px;
   --topbar-offset: calc(var(--header-height) + var(--safe-top));
   --toolbar-height: 48px;
 
@@ -212,32 +212,14 @@ a:hover {
 }
 
 .module-nav {
-  position: fixed;
-  top: var(--topbar-offset);
-  left: 0;
-  right: 0;
-  z-index: 90;
-  height: var(--nav-height);
-  padding: 0 calc(12px + var(--safe-right)) 0 calc(12px + var(--safe-left));
+  flex: 1 1 auto;
+  min-width: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  border-bottom: 1px solid var(--border);
-  background: rgba(8, 24, 32, 0.95);
-  backdrop-filter: saturate(180%) blur(20px);
-  -webkit-backdrop-filter: saturate(180%) blur(20px);
 }
 
-@media (max-width: 640px) {
-  .module-nav {
-    height: var(--nav-height);
-    min-height: var(--nav-height);
-    padding-left: calc(10px + var(--safe-left));
-    padding-right: calc(10px + var(--safe-right));
-    flex-wrap: nowrap;
-  }
-}
 
 .brand {
   display: flex;
@@ -1668,16 +1650,11 @@ a:hover {
   to { opacity: 1; transform: translateY(0); }
 }
 
-@media (max-width: 1024px) {
-  .module-nav {
-    position: fixed;
-  }
-}
 
 @media (max-width: 640px) {
   :root {
     --header-height: 56px;
-    --nav-height: 56px;
+    --nav-height: 0px;
   }
 
 
@@ -1732,8 +1709,7 @@ a:hover {
 }
 
 @media (orientation: landscape) and (max-height: 500px) {
-  .topbar,
-  .module-nav {
+  .topbar {
     position: fixed;
   }
 
