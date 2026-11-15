@@ -25,14 +25,13 @@
   --tooltip-bg: #0c1f2c;
   --tooltip-border: #234054;
   --on-brand: #031014;
-  --status-online: #14d48a;
-  --status-demo: #e8b842;
   --severity-normal: #14d48a;
   --severity-normal-bg: rgba(20, 212, 138, 0.1);
   --severity-watch: #e8b842;
   --severity-watch-bg: rgba(232, 184, 66, 0.1);
   --severity-act: #ff8a3d;
   --severity-act-bg: rgba(255, 138, 61, 0.12);
+  --status-demo: #e8b842;
   --severity-emergency: #ff5a6e;
   --severity-emergency-bg: rgba(255, 90, 110, 0.12);
   --emphasis: #e8b842;
@@ -288,56 +287,6 @@ a:hover {
   text-overflow: ellipsis;
 }
 
-.top-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-shrink: 0;
-}
-
-.connection {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 10px;
-  border-radius: var(--radius-full);
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--muted-strong);
-  background: var(--surface-soft);
-  border: 1px solid var(--border);
-  transition: all var(--transition-fast);
-}
-
-.connection .indicator {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--status-online);
-  box-shadow: 0 0 8px var(--status-online);
-  animation: pulse-ring 2s ease-out infinite;
-}
-
-.connection.demo .indicator {
-  background: var(--status-demo);
-  box-shadow: 0 0 8px var(--status-demo);
-}
-
-@keyframes pulse-ring {
-  0% { box-shadow: 0 0 0 0 var(--status-online); }
-  70% { box-shadow: 0 0 0 8px transparent; }
-  100% { box-shadow: 0 0 0 0 transparent; }
-}
-
-.connection.demo .indicator {
-  animation-name: pulse-ring-demo;
-}
-
-@keyframes pulse-ring-demo {
-  0% { box-shadow: 0 0 0 0 var(--status-demo); }
-  70% { box-shadow: 0 0 0 8px transparent; }
-  100% { box-shadow: 0 0 0 0 transparent; }
-}
 
 .icon-btn {
   width: 44px;
@@ -420,54 +369,6 @@ a:hover {
   gap: 8px;
   margin-left: auto;
   flex-shrink: 0;
-}
-
-.sync-status {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-height: 28px;
-  padding: 4px 10px;
-  border-radius: var(--radius-full);
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--status-online);
-  background: var(--severity-normal-bg);
-  border: 1px solid rgba(20, 212, 138, 0.2);
-}
-
-.sync-status.offline {
-  color: var(--severity-watch);
-  background: var(--severity-watch-bg);
-  border-color: rgba(232, 184, 66, 0.2);
-}
-
-.sync-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--status-online);
-  box-shadow: 0 0 8px var(--status-online);
-  animation: pulse-ring 2s ease-out infinite;
-  flex-shrink: 0;
-}
-
-.sync-status.offline .sync-dot {
-  background: var(--severity-watch);
-  box-shadow: 0 0 8px var(--severity-watch);
-  animation-name: pulse-ring-demo;
-}
-
-@keyframes pulse-ring {
-  0% { box-shadow: 0 0 0 0 var(--status-online); }
-  70% { box-shadow: 0 0 0 8px transparent; }
-  100% { box-shadow: 0 0 0 0 transparent; }
-}
-
-@keyframes pulse-ring-demo {
-  0% { box-shadow: 0 0 0 0 var(--severity-watch); }
-  70% { box-shadow: 0 0 0 8px transparent; }
-  100% { box-shadow: 0 0 0 0 transparent; }
 }
 
 .pending-badge {
@@ -1779,9 +1680,6 @@ a:hover {
     --nav-height: 56px;
   }
 
-  .sync-status {
-    display: none;
-  }
 
   .module-tab {
     padding-inline: 12px;
@@ -1822,13 +1720,6 @@ a:hover {
     font-size: 14px;
   }
 
-  .connection span:not(.indicator) {
-    display: none;
-  }
-
-  .connection {
-    padding: 6px 8px;
-  }
 
   .welcome-text h2 {
     font-size: 22px;
