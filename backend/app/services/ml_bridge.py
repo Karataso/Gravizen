@@ -40,6 +40,9 @@ def _stress_level(value: float, base: float) -> Level:
     return Level.NORMAL
 
 
+# Orden fijo de los 5 peligros de NASA HRP (PROJECT.md §7.4).
+HAZARD_ORDER = ("rad", "iso", "grav", "env", "dist")
+
 # Síntomas del check-in que se muestran como indicador propio (PROJECT.md §5.1).
 SYMPTOM_RULES = {
     "headache": (Level.WATCH, "Cefalea nueva o persistente"),
@@ -70,9 +73,20 @@ def evaluate_crew_day(crew_id: str, day: int, db: Session) -> StatusResponse:
     checkin = db.execute(
         select(CheckIn).where(CheckIn.astronaut_id == crew_id, CheckIn.day == day)
     ).scalar_one_or_none()
-    if checkin is None:
-        return status
+    if checkin is not None:
+        _apply_checkin(status, checkin)
 
+    # El dashboard muestra siempre los 5 peligros de NASA HRP (§3.1).
+    present = {h.id: h for h in status.hazards}
+    status.hazards = [
+        present.get(hid) or HazardStatus(id=hid, level=Level.NORMAL, why=["Sin desviaciones este día"])
+        for hid in HAZARD_ORDER
+    ] + [h for h in status.hazards if h.id not in HAZARD_ORDER]
+
+    return status
+
+
+def _apply_checkin(status: StatusResponse, checkin: CheckIn) -> None:
     by_id = {ind.id: ind for ind in status.indicators}
 
     for ind_id, value, rule in (
@@ -108,8 +122,6 @@ def evaluate_crew_day(crew_id: str, day: int, db: Session) -> StatusResponse:
                 id="iso", level=Level.EMERGENCY,
                 why=["Check-in reporta pensamientos de hacerse daño: emergencia inmediata"],
             )]
-
-    return status
 
 
 def get_ml_status() -> dict:
