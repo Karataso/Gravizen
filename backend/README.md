@@ -26,16 +26,20 @@ backend/
 │   │   ├── measurement.py
 │   │   ├── checkin.py
 │   │   ├── report.py
-│   │   └── profile.py
+│   │   ├── profile.py
+│   │   └── reference.py
 │   ├── routers/             # API endpoints
 │   │   ├── health.py        # GET /api/health
 │   │   ├── crew.py          # GET /api/crew, /status, /series
 │   │   ├── checkins.py      # POST /api/crew/{id}/checkins
 │   │   ├── reports.py       # POST/GET /api/reports
-│   │   └── profiles.py      # GET /api/profiles
+│   │   ├── profiles.py      # GET /api/profiles
+│   │   └── reference.py     # GET /api/reference/inspiration4/glucose
+│   ├── data/nasa/           # CSV público de referencia (OSD-575)
 │   └── services/            # Business logic
 │       ├── data_loader.py   # Mock data (fase 1-2)
-│       └── ml_bridge.py     # Puente a paquete ml/ (transit → received → responded)
+│       ├── ml_bridge.py     # Puente a paquete ml/ (transit → received → responded)
+│       └── nasa_data.py     # Datos reales OSDR (OSD-575)
 ├── tests/                   # pytest tests
 ├── requirements.txt
 ├── Dockerfile
@@ -60,6 +64,7 @@ Endpoints principales:
 | POST | `/api/crew/{id}/reports` | Reporte a médico de vuelo |
 | GET | `/api/reports` | Listar reportes con estado |
 | GET | `/api/profiles` | Perfiles de misión |
+| GET | `/api/reference/inspiration4/glucose` | Glucosa real de Inspiration4 (OSDR OSD-575) |
 
 ## Desarrollo local
 

@@ -4,6 +4,7 @@ import type {
   BaselineStats,
   CrewMember,
   DashboardData,
+  GlucoseReference,
   HazardStatus,
   IndicatorStatus,
   MissionProfile,
@@ -404,6 +405,50 @@ export async function updateCrewProfile(
 
 function knownProfile(value: string | null): MissionProfile | null {
   return value === 'station' || value === 'moon' || value === 'mars_transit' ? value : null;
+}
+
+export async function fetchInspiration4Glucose(signal?: AbortSignal): Promise<GlucoseReference> {
+  const payload = await getJson('/api/reference/inspiration4/glucose', signal);
+  if (!isRecord(payload) || !Array.isArray(payload.points)) {
+    throw new ApiError('La respuesta de datos reales no contiene una lista de puntos.');
+  }
+
+  const points = payload.points.map((item, index) => {
+    if (!isRecord(item)) {
+      throw new ApiError(`La API devolvió un punto real inválido en la posición ${index}.`);
+    }
+    const crewId = readString(item.crew_id);
+    const timepoint = readString(item.timepoint);
+    const day = readNumber(item.day);
+    if (!crewId || !timepoint || day === null) {
+      throw new ApiError(`La API devolvió un punto real incompleto en la posición ${index}.`);
+    }
+    return {
+      crewId,
+      timepoint,
+      day,
+      value: readNullableNumber(item.value, `La glucosa real de ${crewId}`),
+      rangeMin: readNullableNumber(item.range_min, `El rango mínimo de ${crewId}`),
+      rangeMax: readNullableNumber(item.range_max, `El rango máximo de ${crewId}`),
+    };
+  });
+
+  const sourceUrl = readString(payload.source_url);
+  if (!sourceUrl) {
+    throw new ApiError('La respuesta de datos reales no indica la fuente.');
+  }
+
+  return {
+    study: readString(payload.study) ?? 'OSD-575',
+    title: readString(payload.title) ?? 'Inspiration4',
+    sourceUrl,
+    license: readString(payload.license) ?? '',
+    indicator: readString(payload.indicator) ?? 'glucose_mgdl',
+    unit: readString(payload.unit) ?? 'mg/dL',
+    note: readString(payload.note) ?? '',
+    preflightMedian: readNullableNumber(payload.preflight_median, 'La mediana pre-vuelo'),
+    points,
+  };
 }
 
 export async function fetchReports(crewId: string, signal?: AbortSignal): Promise<MissionReport[]> {

@@ -54,6 +54,17 @@
       "action": "Mantén hidratación y rutina.",
       "escalate": "crew",
       "days_to_threshold": null
+    },
+    {
+      "id": "glucose_mgdl",
+      "value": 76.0,
+      "baseline": 76.0,
+      "level": "normal",
+      "z": 0.0,
+      "why": [],
+      "action": "",
+      "escalate": "",
+      "days_to_threshold": null
     }
   ],
   "hazards": [

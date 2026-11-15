@@ -42,12 +42,20 @@ MOCK_CREW = [
     },
 ]
 
+# Glucosa base calibrada con la mediana pre-vuelo real de OSDR OSD-575.
+try:
+    from app.services.nasa_data import get_preflight_glucose_median
+    GLUCOSE_BASELINE = get_preflight_glucose_median() or 85.0
+except Exception:  # si falta el CSV, el demo sigue funcionando
+    GLUCOSE_BASELINE = 85.0
+
+
 # Línea base personal (única fuente para status, series y check-in).
 CREW_BASELINES = {
-    "c1": {"sleep": 7.0, "hr": 62, "mood": 4, "stress": 2, "exercise": 90},
-    "c2": {"sleep": 6.5, "hr": 58, "mood": 3, "stress": 2, "exercise": 100},
-    "c3": {"sleep": 7.2, "hr": 65, "mood": 4, "stress": 1, "exercise": 95},
-    "c4": {"sleep": 6.8, "hr": 60, "mood": 3, "stress": 2, "exercise": 85},
+    "c1": {"sleep": 7.0, "hr": 62, "mood": 4, "stress": 2, "exercise": 90, "glucose": GLUCOSE_BASELINE},
+    "c2": {"sleep": 6.5, "hr": 58, "mood": 3, "stress": 2, "exercise": 100, "glucose": GLUCOSE_BASELINE},
+    "c3": {"sleep": 7.2, "hr": 65, "mood": 4, "stress": 1, "exercise": 95, "glucose": GLUCOSE_BASELINE},
+    "c4": {"sleep": 6.8, "hr": 60, "mood": 3, "stress": 2, "exercise": 85, "glucose": GLUCOSE_BASELINE},
 }
 
 
@@ -228,6 +236,10 @@ def get_mock_status(crew_id: str, day: int) -> StatusResponse:
             _normal("co2_mmhg", 2.2, 2.5),
         ])
 
+    # La glucosa no es parte de los escenarios; se muestra en su base real.
+    if not any(ind.id == "glucose_mgdl" for ind in indicators):
+        indicators.append(_normal("glucose_mgdl", bl["glucose"], bl["glucose"]))
+
     return StatusResponse(
         crew_id=crew_id,
         day=day,
@@ -253,6 +265,7 @@ def get_mock_series(crew_id: str, end_day: int, days: int) -> SeriesResponse:
         "stress": [],
         "exercise_min": [],
         "co2_mmhg": [],
+        "glucose_mgdl": [],
     }
 
     for d in day_range:
@@ -264,6 +277,7 @@ def get_mock_series(crew_id: str, end_day: int, days: int) -> SeriesResponse:
             "stress": bl["stress"],
             "exercise_min": bl["exercise"],
             "co2_mmhg": 2.2,
+            "glucose_mgdl": bl["glucose"],
         }
         if scenario == "isolation" and d >= 96:
             progress = min((d - 96) / 30, 1.0)
@@ -294,6 +308,7 @@ def get_mock_series(crew_id: str, end_day: int, days: int) -> SeriesResponse:
             "stress": IndicatorBaseline(median=bl["stress"], mad=0.5),
             "exercise_min": IndicatorBaseline(median=bl["exercise"], mad=10.0),
             "co2_mmhg": IndicatorBaseline(median=2.5, mad=0.3),
+            "glucose_mgdl": IndicatorBaseline(median=bl["glucose"], mad=6.0),
         },
     )
 

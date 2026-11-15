@@ -21,6 +21,7 @@ Errores: `{"detail": "mensaje"}` (formato FastAPI).
 | GET | `/api/reports?crew_id=` | Reportes con estado de tránsito |
 | POST | `/api/reports/{id}/respond` | Simula la respuesta de Tierra |
 | GET | `/api/profiles` | Perfiles de misión y sus parámetros |
+| GET | `/api/reference/inspiration4/glucose` | Glucosa real de Inspiration4 (OSDR OSD-575) |
 
 ## Formas
 
@@ -136,6 +137,29 @@ Retraso: Estación 0 · Luna 3 · Marte 20 min. En demo, ×60.
   "description": "...", "radiation_base_msv": 1.8, "comms_delay_minutes": 20,
   "co2_base_mmhg": 2.5}], "current": "mars_transit"}
 ```
+
+### `GET /api/reference/inspiration4/glucose`
+
+Datos reales de NASA OSDR (OSD-575), no simulados. 4 tripulantes × 7 extracciones.
+
+```json
+{
+  "study": "OSD-575",
+  "title": "SpaceX Inspiration4 Blood Serum Metabolic Panel",
+  "source_url": "https://osdr.nasa.gov/bio/repo/data/studies/OSD-575",
+  "license": "NASA OSDR · datos procesados públicos",
+  "indicator": "glucose_mgdl",
+  "unit": "mg/dL",
+  "note": "Datos reales de 4 tripulantes ... el dashboard diario es simulado ...",
+  "preflight_median": 76.0,
+  "points": [
+    {"crew_id": "C001", "timepoint": "L-3", "day": -3,
+     "value": 69.0, "range_min": 65.0, "range_max": 99.0}
+  ]
+}
+```
+
+Ver [`data-sources.md`](data-sources.md) para la procedencia y qué es simulado.
 
 ## Diferencias respecto a `PROJECT.md` §9 (decididas al integrar el backend)
 

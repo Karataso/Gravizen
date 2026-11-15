@@ -76,3 +76,25 @@ export interface DashboardData {
   series: SeriesDataset;
   source: 'api' | 'demo';
 }
+
+export interface GlucosePoint {
+  crewId: string;
+  timepoint: string;
+  day: number;
+  value: number | null;
+  rangeMin: number | null;
+  rangeMax: number | null;
+}
+
+export interface GlucoseReference {
+  study: string;
+  title: string;
+  sourceUrl: string;
+  license: string;
+  indicator: string;
+  unit: string;
+  note: string;
+  preflightMedian: number | null;
+  points: GlucosePoint[];
+}
+

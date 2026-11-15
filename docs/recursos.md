@@ -21,6 +21,10 @@ Por eso cada dato del proyecto viene de una de estas cuatro fuentes, y hay que p
 
 **Ningún integrante necesita datos externos para empezar.** Roles 2 y 3 usan `fixtures/`; rol 5 calibra el simulador con la §5; rol 6 cita la §5 y la §6.
 
+El mapa de qué dato usa la app, cuál es real y cuál simulado está en
+[`data-sources.md`](data-sources.md). Ahí está el CSV público de Inspiration4
+(OSD-575) que alimenta la pantalla "Datos reales".
+
 ---
 
 ## 1. Qué hacer en los primeros 30 minutos
@@ -85,6 +89,7 @@ Estas son las que un jurado puede verificar. Si una no tiene fuente, no va al pi
 | Fuente | Qué contiene | Acceso | Forma | ¿Nos sirve? |
 |---|---|---|---|---|
 | [OSDR](https://osdr.nasa.gov/) ✅ | Ómica y biospecímenes (humanos, ratones, plantas), datos post-vuelo | Público; algunos datos humanos requieren acuerdo | Ficheros por estudio, API y descarga masiva | **No** para signos vitales diarios. Sí como cita de "aquí se reentrenaría" |
+| [OSDR OSD-575](https://osdr.nasa.gov/bio/repo/data/studies/OSD-575) ✅ | Inspiration4: panel metabólico + citoquinas, 4 tripulantes × 7 extracciones | Público | CSV/JSON | **Sí**, como glucosa real de referencia y calibración |
 | [LSDA / NASA Life Sciences Portal](https://lsda.jsc.nasa.gov/) ✅ | Experimentos médicos humanos (sueño, psicología, cardiovascular) | Solicitud, revisión, puede tardar días o semanas | Tablas por experimento | **Referencia**, no viable en 15 h |
 | HERA (NASA JSC) | Campañas análogas de 45 días con sueño, ánimo, carga | Vía LSDA / papers | Agregados y papers | Referencia metodológica |
 | HI-SEAS (Univ. de Hawái) | Análogos de 4–12 meses, sueño, ánimo, conflicto | Papers y repositorios de autor ⚠️ | Agregados | Referencia cualitativa |

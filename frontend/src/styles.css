@@ -2900,3 +2900,51 @@ textarea {
 @media (min-width: 641px) {
   .mobile-menu-overlay { display: none; }
 }
+
+/* Datos reales (NASA OSDR) */
+.evidence-panel {
+  padding: 1.25rem;
+}
+
+.evidence-split {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.9rem;
+  margin: 1rem 0;
+}
+
+.evidence-split > div {
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-soft);
+}
+
+.evidence-split b {
+  color: var(--text);
+  font-size: 0.85rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.evidence-split p {
+  margin: 0.4rem 0 0;
+  color: var(--text-soft);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.evidence-split a {
+  color: var(--brand);
+}
+
+.evidence-footnote {
+  margin-top: 0.75rem;
+  font-size: 0.82rem;
+}
+
+@media (max-width: 720px) {
+  .evidence-split {
+    grid-template-columns: 1fr;
+  }
+}

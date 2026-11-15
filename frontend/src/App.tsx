@@ -13,20 +13,24 @@ import {
 import { getIndicatorMeta, severityRank } from './domain';
 import { CheckInForm } from './components/CheckInForm';
 import { EarthLinkPanel } from './components/EarthLinkPanel';
+import { RealDataPanel } from './components/RealDataPanel';
 import { useSyncQueue } from './hooks/useSyncQueue';
 import type { CrewMember, DashboardData, MissionProfile, Severity } from './types';
 
-type AppView = 'dashboard' | 'checkin' | 'earth';
+type AppView = 'dashboard' | 'checkin' | 'earth' | 'evidence';
 
 const VIEWS: { id: AppView; label: string; short: string }[] = [
   { id: 'dashboard', label: 'Dashboard', short: 'Dashboard' },
   { id: 'checkin', label: 'Check-in diario', short: 'Check-in' },
   { id: 'earth', label: 'Enlace con Tierra', short: 'Tierra' },
+  { id: 'evidence', label: 'Datos reales', short: 'Datos' },
 ];
 
 function initialView(): AppView {
   const requestedView = new URLSearchParams(window.location.search).get('view');
-  if (requestedView === 'checkin' || requestedView === 'earth') return requestedView;
+  if (requestedView === 'checkin' || requestedView === 'earth' || requestedView === 'evidence') {
+    return requestedView;
+  }
   return 'dashboard';
 }
 
@@ -326,6 +330,10 @@ export default function App() {
                 currentDay={currentMissionDay}
                 onReportCreated={handleReportCreated}
               />
+            </div>
+          ) : view === 'evidence' ? (
+            <div className="module-view">
+              <RealDataPanel />
             </div>
           ) : (
             <>

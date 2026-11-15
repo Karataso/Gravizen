@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { fetchSeries } from './api';
+import { fetchInspiration4Glucose, fetchSeries } from './api';
 
 function mockSeries(payload: unknown) {
   vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(payload), {
@@ -42,5 +42,38 @@ describe('fetchSeries', () => {
     });
 
     await expect(fetchSeries('c1', 3)).rejects.toThrow(/no termina en ese día/);
+  });
+});
+
+describe('fetchInspiration4Glucose', () => {
+  it('maps the real OSDR payload to camelCase without changing values', async () => {
+    mockSeries({
+      study: 'OSD-575',
+      title: 'SpaceX Inspiration4 Blood Serum Metabolic Panel',
+      source_url: 'https://osdr.nasa.gov/bio/repo/data/studies/OSD-575',
+      license: 'NASA OSDR',
+      indicator: 'glucose_mgdl',
+      unit: 'mg/dL',
+      note: 'real',
+      preflight_median: 83,
+      points: [
+        {
+          crew_id: 'C001',
+          timepoint: 'L-3',
+          day: -3,
+          value: 69,
+          range_min: 65,
+          range_max: 99,
+        },
+      ],
+    });
+
+    const data = await fetchInspiration4Glucose();
+
+    expect(data.study).toBe('OSD-575');
+    expect(data.points).toEqual([
+      { crewId: 'C001', timepoint: 'L-3', day: -3, value: 69, rangeMin: 65, rangeMax: 99 },
+    ]);
+    expect(data.preflightMedian).toBe(83);
   });
 });

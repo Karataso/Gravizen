@@ -24,6 +24,10 @@ from app.schemas.profile import (
     ProfileResponse,
     ProfileListResponse,
 )
+from app.schemas.reference import (
+    GlucosePoint,
+    GlucoseReferenceResponse,
+)
 __all__ = [
     # Crew
     "AstronautPublic",
@@ -45,4 +49,7 @@ __all__ = [
     # Profile
     "ProfileResponse",
     "ProfileListResponse",
+    # Reference (real NASA data)
+    "GlucosePoint",
+    "GlucoseReferenceResponse",
 ]

@@ -19,6 +19,7 @@ La URL base del backend se configura con `VITE_API_URL` (sin `/api`). Si se deja
 - **Dashboard:** estado personal, semáforos de tripulación, peligros NASA, proyección, acción sugerida, urgencia y tendencia de indicadores.
 - **Check-in diario:** formulario de sueño, ánimo, estrés y síntomas. Se guarda en IndexedDB y se sincroniza cuando vuelve la red.
 - **Enlace con Tierra:** bitácora de reportes en tránsito, acción autónoma y simulación de latencia.
+- **Datos reales:** glucosa pre/post de Inspiration4 (NASA OSDR OSD-575), separada de la serie diaria simulada. Procedencia en [`../docs/data-sources.md`](../docs/data-sources.md).
 
 La lista de tripulación muestra únicamente nombre, rol y semáforo; no expone datos clínicos de otras personas.
 

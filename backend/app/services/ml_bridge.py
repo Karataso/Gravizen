@@ -23,7 +23,7 @@ except Exception:  # ImportError o dependencias del modelo ausentes
     _ml_evaluate = None
 
 # Si el dataset no trae línea base para un indicador, el check-in usa esta.
-DEFAULT_BASELINE = {"sleep_h": 7.0, "mood": 4.0, "stress": 2.0}
+DEFAULT_BASELINE = {"sleep_h": 7.0, "mood": 4.0, "stress": 2.0, "glucose_mgdl": 85.0}
 
 # Los ids del contrato no coinciden con las claves de la línea base.
 BASELINE_KEYS = {
@@ -32,6 +32,14 @@ BASELINE_KEYS = {
     "mood": "mood",
     "stress": "stress",
     "exercise_min": "exercise",
+    "glucose_mgdl": "glucose",
+}
+
+CHECKIN_LABELS = {
+    "sleep_h": "Sueño",
+    "mood": "Ánimo",
+    "stress": "Estrés",
+    "glucose_mgdl": "Glucosa",
 }
 
 
@@ -55,6 +63,15 @@ def _stress_level(value: float, base: float) -> Level:
     if value >= base + 2:
         return Level.ACT
     if value >= base + 1:
+        return Level.WATCH
+    return Level.NORMAL
+
+
+def _glucose_level(value: float, base: float) -> Level:
+    """Umbrales absolutos de PROJECT.md §5.1 (sin el caso 'con síntomas')."""
+    if value > 140 or value < 60:
+        return Level.ACT
+    if value > 110 or value < 70:
         return Level.WATCH
     return Level.NORMAL
 
@@ -119,6 +136,7 @@ def _apply_checkin(status: StatusResponse, checkin: CheckIn) -> None:
         ("sleep_h", checkin.sleep_h, _sleep_level),
         ("mood", checkin.mood, _mood_level),
         ("stress", checkin.stress, _stress_level),
+        ("glucose_mgdl", checkin.glucose_mgdl, _glucose_level),
     ):
         if value is None:
             continue
@@ -130,7 +148,7 @@ def _apply_checkin(status: StatusResponse, checkin: CheckIn) -> None:
         if base is None:
             base = crew_base.get(BASELINE_KEYS[ind_id], DEFAULT_BASELINE.get(ind_id, value))
             ind.baseline = base
-        _overlay(ind, value, rule(value, base), ind_id)
+        _overlay(ind, value, rule(value, base), CHECKIN_LABELS.get(ind_id, ind_id))
 
     for symptom, (level, label) in SYMPTOM_RULES.items():
         if not getattr(checkin, symptom):

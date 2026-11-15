@@ -33,6 +33,17 @@ def test_checkin_uses_crew_baseline(client: TestClient):
     assert by_id["stress"]["level"] == "act"
 
 
+def test_glucose_checkin_overrides_the_real_baseline(client: TestClient):
+    """Glucosa 150 mg/dL usa la base real de OSD-575 y sube a actuar."""
+    from app.services.nasa_data import get_preflight_glucose_median
+
+    status = client.post("/api/crew/c1/checkins", json={"day": 118, "glucose_mgdl": 150}).json()["status"]
+
+    glucose = next(i for i in status["indicators"] if i["id"] == "glucose_mgdl")
+    assert glucose["baseline"] == get_preflight_glucose_median()
+    assert glucose["level"] == "act"
+
+
 def test_checkin_rejects_unknown_fields(client: TestClient):
     """Un nombre fuera del contrato falla con 422, no se ignora en silencio."""
     response = client.post("/api/crew/c1/checkins", json={"day": 118, "sleep_hours": 5})

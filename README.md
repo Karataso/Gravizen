@@ -6,20 +6,22 @@ Health-monitoring software for astronauts, built for the NASA Space Apps Challen
 - [`docs/PROJECT.md`](docs/PROJECT.md) — challenge, MVP, data, API contract, tasks per role
 - [`docs/api.md`](docs/api.md) — API contract (frozen; manda sobre las formas de §9)
 - [`docs/recursos.md`](docs/recursos.md) — where every data point and citation comes from
+- [`docs/data-sources.md`](docs/data-sources.md) — datos reales, qué es simulado y cómo se mide en el espacio
 - [`docs/guia-trabajo.md`](docs/guia-trabajo.md) — clinical background
 
-Status: pre-code. `main` is the integration branch; one branch per role, small PRs.
+Status: MVP funcional (demo día 118). `main` es la rama de integración; una rama por rol, PRs pequeños.
 
 No existe un dataset público de signos vitales diarios de astronautas: **la fisiología es simulada**, y lo declaramos. Los umbrales y los límites de radiación y CO₂ sí salen de NASA (ver `docs/recursos.md`).
 
 ## Layout
 
 ```
-docs/       especificación, contrato y material clínico
+docs/       especificación, contrato, material clínico y procedencia de datos
 fixtures/   respuestas de ejemplo para que FE y BE trabajen en paralelo
 frontend/   Vite + React + TS + Tailwind + Recharts
 backend/    FastAPI + SQLAlchemy + SQLite
 ml/         simulador, reglas, contenido, evaluación
+scripts/    descarga de datos públicos de NASA (OSDR / DONKI)
 ```
 
 ## Correr el backend
